@@ -111,12 +111,12 @@ export function ChatSheet({ roomId, currentUser, isGM, room, activeCharacter, se
         
         {/* 채팅 화면 */}
         <div className={`flex-1 flex-col overflow-hidden ${activeTab === "chat" ? "flex" : "hidden"}`}>
-          <ChatWindow roomId={roomId} currentUser={currentUser} isGM={isGM} activeCharacter={activeCharacter} />
+          <ChatWindow roomId={roomId} currentUser={currentUser} isGM={isGM} activeCharacter={activeCharacter ?? null} />
         </div>
 
         {/* 메뉴 화면 */}
         <div className={`flex-1 flex-col overflow-hidden ${activeTab === "menu" ? "flex" : "hidden"}`}>
-          <MenuSidebar roomId={roomId} currentUser={currentUser} room={room} activeCharacter={activeCharacter} setActiveCharacter={setActiveCharacter} />
+          <MenuSidebar roomId={roomId} currentUser={currentUser} room={room} activeCharacter={activeCharacter ?? null} setActiveCharacter={setActiveCharacter} />
         </div>
 
         {/* GM 패널 */}
