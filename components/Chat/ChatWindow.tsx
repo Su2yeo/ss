@@ -118,8 +118,8 @@ export function ChatWindow({ roomId, currentUser, isGM, activeCharacter }: ChatW
         <span className="text-zinc-400 font-medium">현재 화자:</span>
         {activeCharacter ? (
           <div className="flex items-center gap-1.5 bg-indigo-900/40 border border-indigo-700/50 px-2 py-0.5 rounded text-indigo-300 font-bold">
-            {activeCharacter.photoURL && (
-              <img src={activeCharacter.photoURL} alt="캐릭터" className="w-4 h-4 rounded-full object-cover" />
+            {activeCharacter.avatarUrl && (
+              <img src={activeCharacter.avatarUrl} alt="캐릭터" className="w-4 h-4 rounded-full object-cover" />
             )}
             <span>{activeCharacter.name}</span>
           </div>
