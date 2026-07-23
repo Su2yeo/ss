@@ -6,7 +6,7 @@ import { MessageItem } from "@/components/Chat/MessageItem";
 import { DateDivider } from "@/components/Chat/DateDivider";
 import { ChatInput } from "@/components/Chat/ChatInput";
 import { formatDateDivider, isSameDay } from "@/utils/formatDate";
-import type { MessageType } from "@/types/chat";
+import type { MessageType, NewChatMessageInput } from "@/types/chat";
 import type { Character } from "@/types/character";
 
 interface ChatWindowProps {
@@ -24,6 +24,12 @@ export function ChatWindow({ roomId, currentUser, isGM, activeCharacter }: ChatW
   const stickToBottomRef = useRef(true);
   const activeCharRef = useRef(activeCharacter);
 
+  // 🔥 본편/잡담 탭 상태 관리
+  const [chatCategory, setChatCategory] = useState<"main" | "ooc">("main");
+
+  // 🔥 현재 탭(category)에 맞는 메시지만 필터링 (기존 메시지는 기본적으로 main으로 취급)
+  const filteredMessages = messages.filter(msg => (msg.category || "main") === chatCategory);
+
   useEffect(() => {
     activeCharRef.current = activeCharacter;
   }, [activeCharacter]);
@@ -35,11 +41,12 @@ export function ChatWindow({ roomId, currentUser, isGM, activeCharacter }: ChatW
     stickToBottomRef.current = distanceFromBottom < SCROLL_BOTTOM_THRESHOLD;
   };
 
+  // 🔥 탭을 전환하거나 새 메시지가 올 때 스크롤 맨 아래로 이동
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || !stickToBottomRef.current) return;
     el.scrollTop = el.scrollHeight;
-  }, [messages]);
+  }, [filteredMessages, chatCategory]);
 
   const handleSend = async (
     content: string, 
@@ -49,11 +56,12 @@ export function ChatWindow({ roomId, currentUser, isGM, activeCharacter }: ChatW
     const currentChar = activeCharRef.current;
     const finalAuthorName = currentChar ? currentChar.name : currentUser.displayName;
     
-    const payload: any = {
+    const payload: NewChatMessageInput = {
       type,
       authorId: currentUser.uid, 
       authorName: finalAuthorName,
       content,
+      category: chatCategory, // 🔥 전송 시 현재 열려있는 탭 정보를 함께 저장
     };
 
     const finalAuthorPhoto = currentChar ? currentChar.avatarUrl : currentUser.photoURL;
@@ -66,7 +74,25 @@ export function ChatWindow({ roomId, currentUser, isGM, activeCharacter }: ChatW
   return (
     <div className="flex flex-col h-full bg-zinc-950 rounded-2xl overflow-hidden shadow-lg border border-zinc-800">
       
-      {/* ❌ 여기에 있던 상단 화자 표시 삭제됨 */}
+      {/* 🔥 상단 본편 / 잡담 탭 전환 버튼 */}
+      <div className="flex bg-zinc-900 border-b border-zinc-800 shrink-0">
+        <button
+          onClick={() => setChatCategory("main")}
+          className={`flex-1 py-3 text-xs font-bold transition-colors ${
+            chatCategory === "main" ? "text-indigo-400 border-b-2 border-indigo-500 bg-zinc-800/50" : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/30"
+          }`}
+        >
+          🎭 본편
+        </button>
+        <button
+          onClick={() => setChatCategory("ooc")}
+          className={`flex-1 py-3 text-xs font-bold transition-colors ${
+            chatCategory === "ooc" ? "text-emerald-400 border-b-2 border-emerald-500 bg-zinc-800/50" : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/30"
+          }`}
+        >
+          💬 잡담 (OOC)
+        </button>
+      </div>
 
       <div
         ref={scrollRef}
@@ -75,14 +101,14 @@ export function ChatWindow({ roomId, currentUser, isGM, activeCharacter }: ChatW
       >
         {loading && <p className="text-center text-sm text-zinc-500 py-6">채팅을 불러오는 중...</p>}
         {error && <p className="text-center text-sm text-red-400 py-6">{error}</p>}
-        {!loading && !error && messages.length === 0 && (
+        {!loading && !error && filteredMessages.length === 0 && (
           <p className="text-center text-sm text-zinc-600 py-10 font-medium">
-            아직 메시지가 없습니다. 첫 메시지를 남겨보세요.
+            아직 {chatCategory === "main" ? "본편" : "잡담"} 메시지가 없습니다.
           </p>
         )}
 
-        {messages.map((msg, i) => {
-          const prev = messages[i - 1];
+        {filteredMessages.map((msg, i) => {
+          const prev = filteredMessages[i - 1];
           const showDateDivider = !prev || !isSameDay(prev.createdAt, msg.createdAt);
           const isGrouped =
             !showDateDivider &&
@@ -113,7 +139,6 @@ export function ChatWindow({ roomId, currentUser, isGM, activeCharacter }: ChatW
         })}
       </div>
 
-      {/* 🔥 입력창 바로 위로 이동한 '현재 화자' 표시 영역 */}
       <div className="w-full bg-zinc-900 border-t border-zinc-800 px-4 py-2 flex items-center gap-2 text-[11px] shrink-0 z-10 shadow-sm">
         <span className="text-zinc-400 font-medium">현재 화자:</span>
         {activeCharacter ? (
@@ -134,7 +159,7 @@ export function ChatWindow({ roomId, currentUser, isGM, activeCharacter }: ChatW
         )}
       </div>
 
-      <ChatInput onSend={handleSend} sending={sending} isGM={isGM} />
+      <ChatInput onSend={handleSend} sending={sending} isGM={isGM} chatCategory={chatCategory} />
     </div>
   );
 }

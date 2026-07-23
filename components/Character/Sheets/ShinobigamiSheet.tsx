@@ -1,44 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, useMemo } from "react";
 import type { ShinobigamiData } from "@/types/rules/shinobigami";
+import { CLANS, SUB_CLANS, BELIEFS, RANKS, SPECIALTIES, SKILL_ROWS } from "@/types/rules/shinobigami";
+import type { Character } from "@/types/character";
+import { useChatMessages } from "@/hooks/useChatMessages"; // 🔥 채팅 훅 불러오기
 
+// 🔥 roomId와 character를 부모로부터 전달받습니다.
 interface ShinobigamiSheetProps {
+  roomId: string;
+  character: Character;
   sheetData: ShinobigamiData;
   onChange: (field: string, value: any) => void;
 }
 
-const CLANS = ["하스바 닌군", "쿠라마 신류", "하구레모노", "히라사카 기관", "사립 오토기학원", "오니의 혈통", "고류유파"];
-const SUB_CLANS: Record<string, string[]> = {
-  "하스바 닌군": ["상위", "츠바노미 조", "오오즈치 군", "사시가네 반", "오쿠기 무리", "켄반단"],
-  "쿠라마 신류": ["상위", "마와리가라스", "바요넷", "마왕류", "연화왕권", "미츠쿠라 번"],
-  "하구레모노": ["상위", "요루가오", "No.9", "세계닌자연합", "카게에자", "시라누이", "토가메류", "브레멘", "슈라우드", "독자유파"],
-  "히라사카 기관": ["상위", "토쿄요", "시코메 무리", "공안은밀국", "쟈코카이 종합병원", "외사N과"],
-  "사립 오토기학원": ["상위", "특교위", "학생회", "타라오여학원", "구교사관리위", "맥패든 탐정교실"],
-  "오니의 혈통": ["상위", "츠치구모", "셰샤", "마가츠비", "나가미미", "엔마스지"],
-  "고류유파": ["이가닌자", "코우가닌자", "우라야규", "네고로 무리", "슷파", "노키자루", "랏파", "톳파", "사이가 무리", "쿠로하바키 조", "자토우 무리", "하치야 무리", "야츠후사", "쿠로쿠와 조", "카와나미 무리", "야마쿠구리", "카루타 무리", "콘지키안", "스쿠나 무리", "신곤타치카와류", "츠치미카도 가문", "바테렌", "기케이류"],
-};
-const BELIEFS = ["흉", "율", "아", "정", "충", "화"];
-const RANKS = ["하급닌자", "하닌 지휘관", "중급닌자", "중닌 지휘관", "상급닌자", "상닌 지휘관", "두령"];
-const SPECIALTIES = ["기술", "체술", "인술", "모술", "전술", "요술"];
-
-const SKILL_ROWS = [
-  ["기계조작", "기승술", "생존술", "의술", "병량술", "이형화"],
-  ["불의 술", "포술", "잠복술", "독술", "조련술", "소환술"],
-  ["물의 술", "수리검술", "도주술", "함정술", "야전술", "사령술"],
-  ["침술", "손놀림", "도청술", "조사술", "지형활용", "결계술"],
-  ["격납술", "신체조작", "복화술", "사기술", "의기", "봉인술"],
-  ["의상술", "보법", "은신술", "대인술", "용병술", "언령술"],
-  ["포승술", "주법", "변장술", "예능", "기억술", "환술"],
-  ["등반술", "비행술", "조향술", "미인계", "견적술", "동술"],
-  ["고문술", "격투술", "분신술", "꼭두각시술", "암호술", "천리안"],
-  ["장치파괴술", "검술", "은폐술", "선동술", "전달술", "빙의술"],
-  ["굴착술", "괴력", "제6감", "경제력", "인맥", "저주술"]
-];
-
-export function ShinobigamiSheet({ sheetData, onChange }: ShinobigamiSheetProps) {
-  const [activeSheetTab, setActiveSheetTab] = useState<string>("오의");
+export function ShinobigamiSheet({ roomId, character, sheetData, onChange }: ShinobigamiSheetProps) {
+  const [activeSheetTab, setActiveSheetTab] = useState<string>("기본 정보");
   const tabs = ["기본 정보", "특기", "인법 리스트", "닌구", "오의"];
+
+  // 🔥 채팅 전송 함수 가져오기
+  const { sendMessage } = useChatMessages(roomId);
 
   const handleClanChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newClan = e.target.value;
@@ -53,6 +34,111 @@ export function ShinobigamiSheet({ sheetData, onChange }: ShinobigamiSheetProps)
     onChange("skills", { ...sheetData.skills, [name]: { ...current, [field]: val } });
   };
 
+  // 🔥 특기 목표값(판정 수치) 자동 계산
+  const targetValues = useMemo(() => {
+    const rows = SKILL_ROWS.length;
+    const cols = SKILL_ROWS[0].length;
+    
+    const lostFields = sheetData.lostFields || Array(6).fill(false);
+    const specIndex = SPECIALTIES.indexOf(sheetData.specialty);
+    const isSpecialty = Array(6).fill(false);
+    if (specIndex !== -1) isSpecialty[specIndex] = true;
+
+    const grid: number[][] = SKILL_ROWS.map((row) =>
+      row.map((name, c) => {
+        if (lostFields[c]) return 99; 
+        return getSkill(name).isChecked ? 5 : 20;
+      })
+    );
+
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const current = grid[r][c];
+          if (current >= 12) continue;
+
+          if (r > 0 && grid[r - 1][c] > current + 1) { grid[r - 1][c] = current + 1; changed = true; }
+          if (r < rows - 1 && grid[r + 1][c] > current + 1) { grid[r + 1][c] = current + 1; changed = true; }
+
+          if (sheetData.mokryun) {
+            if (r === 0 && grid[10][c] > current + 1) { grid[10][c] = current + 1; changed = true; }
+            if (r === 10 && grid[0][c] > current + 1) { grid[0][c] = current + 1; changed = true; }
+          }
+
+          if (c > 0 && !lostFields[c - 1]) {
+            const gapFilled = isSpecialty[c - 1] || isSpecialty[c];
+            const cost = gapFilled ? 1 : 2;
+            if (grid[r][c - 1] > current + cost) { grid[r][c - 1] = current + cost; changed = true; }
+          }
+          if (c < cols - 1 && !lostFields[c + 1]) {
+            const gapFilled = isSpecialty[c] || isSpecialty[c + 1];
+            const cost = gapFilled ? 1 : 2;
+            if (grid[r][c + 1] > current + cost) { grid[r][c + 1] = current + cost; changed = true; }
+          }
+
+          if (sheetData.makyegonghak) {
+            const leftGapFilled = isSpecialty[0];
+            const cost = leftGapFilled ? 1 : 2;
+            if (c === 0 && !lostFields[5] && grid[r][5] > current + cost) { grid[r][5] = current + cost; changed = true; }
+            if (c === 5 && !lostFields[0] && grid[r][0] > current + cost) { grid[r][0] = current + cost; changed = true; }
+          }
+        }
+      }
+    }
+
+    const map: Record<string, number> = {};
+    SKILL_ROWS.forEach((row, r) => {
+      row.forEach((name, c) => {
+        map[name] = lostFields[c] ? 12 : Math.min(grid[r][c], 12);
+      });
+    });
+    return map;
+  }, [sheetData.skills, sheetData.specialty, sheetData.mokryun, sheetData.makyegonghak, sheetData.lostFields]);
+
+  const [rollResult, setRollResult] = useState<{
+    skillName: string;
+    target: number;
+    dice: [number, number];
+    total: number;
+    success: boolean;
+  } | null>(null);
+
+  // 🔥 주사위 굴림 핸들러: 시트 내부 화면에 띄우고, 채팅방으로도 전송합니다.
+  const handleSkillRoll = async (skillName: string) => {
+    const target = targetValues[skillName] ?? 12;
+    const d1 = Math.floor(Math.random() * 6) + 1;
+    const d2 = Math.floor(Math.random() * 6) + 1;
+    const total = d1 + d2;
+    const success = total >= target;
+    
+    // 1. 시트 내부 결과 배너 표시
+    setRollResult({ skillName, target, dice: [d1, d2], total, success });
+
+    // 2. 채팅창으로 주사위 결과 전송 (본편 탭)
+    const formulaStr = `2d6>=${target} (${skillName})`;
+    const contentMessage = `「${skillName}」 판정 (목표값: ${target})`;
+    
+    try {
+      await sendMessage({
+        type: "dice",
+        authorId: character.ownerId, 
+        authorName: character.name,
+        authorPhotoURL: character.avatarUrl,
+        content: contentMessage,
+        category: "main", // 특기 판정이므로 '본편' 채팅으로 전송
+        diceResult: {
+          formula: formulaStr,
+          rolls: [d1, d2],
+          total: total
+        }
+      });
+    } catch (err) {
+      console.error("주사위 결과 전송 실패:", err);
+    }
+  };
+
   const handleNinpoChange = (index: number, field: string, value: string) => {
     const currentNinpo = sheetData.ninpo || [];
     const newNinpo = [...currentNinpo];
@@ -61,7 +147,6 @@ export function ShinobigamiSheet({ sheetData, onChange }: ShinobigamiSheetProps)
     onChange("ninpo", newNinpo);
   };
 
-  // 🔥 오의 헬퍼 함수
   const handleOugiChange = (index: number, field: string, value: string) => {
     const currentOugi = sheetData.ougi || [];
     const newOugi = [...currentOugi];
@@ -70,7 +155,6 @@ export function ShinobigamiSheet({ sheetData, onChange }: ShinobigamiSheetProps)
     onChange("ougi", newOugi);
   };
 
-  // 🔥 습득제한 헬퍼 함수
   const handleNinpoLimitChange = (index: number, field: string, value: string) => {
     const currentLimits = sheetData.ninpoLimits || [];
     const newLimits = [...currentLimits];
@@ -99,49 +183,83 @@ export function ShinobigamiSheet({ sheetData, onChange }: ShinobigamiSheetProps)
         {activeSheetTab === "기본 정보" && (
           <div className="flex flex-col gap-3">
              <div className="grid grid-cols-3 gap-3">
-              <div><label className="block text-[11px] text-zinc-400 mb-1">연령</label><input type="text" value={sheetData.age || ""} onChange={(e) => onChange("age", e.target.value)} className="w-full bg-zinc-900 text-sm p-2 rounded border border-zinc-700" /></div>
-              <div><label className="block text-[11px] text-zinc-400 mb-1">성별</label><input type="text" value={sheetData.gender || ""} onChange={(e) => onChange("gender", e.target.value)} className="w-full bg-zinc-900 text-sm p-2 rounded border border-zinc-700" /></div>
-              <div><label className="block text-[11px] text-zinc-400 mb-1">PC넘버</label><input type="text" value={sheetData.pcNumber || ""} onChange={(e) => onChange("pcNumber", e.target.value)} className="w-full bg-zinc-900 text-sm p-2 rounded border border-zinc-700" /></div>
+              <div><label className="block text-[11px] text-zinc-400 mb-1">연령</label><input type="text" value={sheetData.age || ""} onChange={(e) => onChange("age", e.target.value)} className="w-full bg-zinc-900 text-white text-sm p-2 rounded border border-zinc-700" /></div>
+              <div><label className="block text-[11px] text-zinc-400 mb-1">성별</label><input type="text" value={sheetData.gender || ""} onChange={(e) => onChange("gender", e.target.value)} className="w-full bg-zinc-900 text-white text-sm p-2 rounded border border-zinc-700" /></div>
+              <div><label className="block text-[11px] text-zinc-400 mb-1">PC넘버</label><input type="text" value={sheetData.pcNumber || ""} onChange={(e) => onChange("pcNumber", e.target.value)} className="w-full bg-zinc-900 text-white text-sm p-2 rounded border border-zinc-700" /></div>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <div><label className="block text-[11px] text-zinc-400 mb-1">유파</label><select value={sheetData.clan || ""} onChange={handleClanChange} className="w-full bg-zinc-900 text-sm p-2 rounded border border-zinc-700"><option value="" disabled>선택</option>{CLANS.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
-              <div><label className="block text-[11px] text-zinc-400 mb-1">하위유파</label><select value={sheetData.subClan || ""} onChange={(e) => onChange("subClan", e.target.value)} className="w-full bg-zinc-900 text-sm p-2 rounded border border-zinc-700">{sheetData.clan && SUB_CLANS[sheetData.clan] ? SUB_CLANS[sheetData.clan].map(s => <option key={s} value={s}>{s}</option>) : <option value="" disabled>먼저 유파 선택</option>}</select></div>
-              <div><label className="block text-[11px] text-zinc-400 mb-1">추가 생명력</label><input type="number" value={sheetData.additionalHp || 0} onChange={(e) => onChange("additionalHp", Number(e.target.value))} className="w-full bg-zinc-900 text-sm p-2 rounded border border-zinc-700 text-center" /></div>
+              <div><label className="block text-[11px] text-zinc-400 mb-1">유파</label><select value={sheetData.clan || ""} onChange={handleClanChange} className="w-full bg-zinc-900 text-white text-sm p-2 rounded border border-zinc-700 cursor-pointer"><option value="" disabled className="bg-zinc-900 text-zinc-400">선택</option>{CLANS.map(c => <option key={c} value={c} className="bg-zinc-900 text-white">{c}</option>)}</select></div>
+              <div><label className="block text-[11px] text-zinc-400 mb-1">하위유파</label><select value={sheetData.subClan || ""} onChange={(e) => onChange("subClan", e.target.value)} className="w-full bg-zinc-900 text-white text-sm p-2 rounded border border-zinc-700 cursor-pointer">{sheetData.clan && SUB_CLANS[sheetData.clan] ? SUB_CLANS[sheetData.clan].map(s => <option key={s} value={s} className="bg-zinc-900 text-white">{s}</option>) : <option value="" disabled className="bg-zinc-900 text-zinc-400">먼저 유파 선택</option>}</select></div>
+              <div><label className="block text-[11px] text-zinc-400 mb-1">추가 생명력</label><input type="number" value={sheetData.additionalHp || 0} onChange={(e) => onChange("additionalHp", Number(e.target.value))} className="w-full bg-zinc-900 text-white text-sm p-2 rounded border border-zinc-700 text-center" /></div>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-2"><label className="block text-[11px] text-zinc-400 mb-1">법식</label><input type="text" value={sheetData.style || ""} onChange={(e) => onChange("style", e.target.value)} className="w-full bg-zinc-900 text-sm p-2 rounded border border-zinc-700" /></div>
-              <div><label className="block text-[11px] text-zinc-400 mb-1">공적점</label><input type="number" value={sheetData.meritPoints || 0} onChange={(e) => onChange("meritPoints", Number(e.target.value))} className="w-full bg-zinc-900 text-sm p-2 rounded border border-zinc-700 text-center" /></div>
+              <div className="col-span-2"><label className="block text-[11px] text-zinc-400 mb-1">법식</label><input type="text" value={sheetData.style || ""} onChange={(e) => onChange("style", e.target.value)} className="w-full bg-zinc-900 text-white text-sm p-2 rounded border border-zinc-700" /></div>
+              <div><label className="block text-[11px] text-zinc-400 mb-1">공적점</label><input type="number" value={sheetData.meritPoints || 0} onChange={(e) => onChange("meritPoints", Number(e.target.value))} className="w-full bg-zinc-900 text-white text-sm p-2 rounded border border-zinc-700 text-center" /></div>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <div><label className="block text-[11px] text-zinc-400 mb-1">숙적</label><input type="text" value={sheetData.nemesis || ""} onChange={(e) => onChange("nemesis", e.target.value)} className="w-full bg-zinc-900 text-sm p-2 rounded border border-zinc-700" /></div>
-              <div className="col-span-2"><label className="block text-[11px] text-zinc-400 mb-1">신념</label><select value={sheetData.belief || ""} onChange={(e) => onChange("belief", e.target.value)} className="w-full bg-zinc-900 text-sm p-2 rounded border border-zinc-700"><option value="" disabled>선택</option>{BELIEFS.map(b => <option key={b} value={b}>{b}</option>)}</select></div>
+              <div><label className="block text-[11px] text-zinc-400 mb-1">숙적</label><input type="text" value={sheetData.nemesis || ""} onChange={(e) => onChange("nemesis", e.target.value)} className="w-full bg-zinc-900 text-white text-sm p-2 rounded border border-zinc-700" /></div>
+              <div className="col-span-2"><label className="block text-[11px] text-zinc-400 mb-1">신념</label><select value={sheetData.belief || ""} onChange={(e) => onChange("belief", e.target.value)} className="w-full bg-zinc-900 text-white text-sm p-2 rounded border border-zinc-700 cursor-pointer"><option value="" disabled className="bg-zinc-900 text-zinc-400">선택</option>{BELIEFS.map(b => <option key={b} value={b} className="bg-zinc-900 text-white">{b}</option>)}</select></div>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <div><label className="block text-[11px] text-zinc-400 mb-1">대외적 신분</label><input type="text" value={sheetData.publicIdentity || ""} onChange={(e) => onChange("publicIdentity", e.target.value)} className="w-full bg-zinc-900 text-sm p-2 rounded border border-zinc-700" /></div>
-              <div><label className="block text-[11px] text-zinc-400 mb-1">계급</label><select value={sheetData.rank || ""} onChange={(e) => onChange("rank", e.target.value)} className="w-full bg-zinc-900 text-sm p-2 rounded border border-zinc-700"><option value="" disabled>선택</option>{RANKS.map(r => <option key={r} value={r}>{r}</option>)}</select></div>
-              <div><label className="block text-[11px] text-zinc-400 mb-1">특기분야</label><select value={sheetData.specialty || ""} onChange={(e) => onChange("specialty", e.target.value)} className="w-full bg-zinc-900 text-sm p-2 rounded border border-zinc-700"><option value="" disabled>선택</option>{SPECIALTIES.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+              <div><label className="block text-[11px] text-zinc-400 mb-1">대외적 신분</label><input type="text" value={sheetData.publicIdentity || ""} onChange={(e) => onChange("publicIdentity", e.target.value)} className="w-full bg-zinc-900 text-white text-sm p-2 rounded border border-zinc-700" /></div>
+              <div><label className="block text-[11px] text-zinc-400 mb-1">계급</label><select value={sheetData.rank || ""} onChange={(e) => onChange("rank", e.target.value)} className="w-full bg-zinc-900 text-white text-sm p-2 rounded border border-zinc-700 cursor-pointer"><option value="" disabled className="bg-zinc-900 text-zinc-400">선택</option>{RANKS.map(r => <option key={r} value={r} className="bg-zinc-900 text-white">{r}</option>)}</select></div>
+              <div><label className="block text-[11px] text-zinc-400 mb-1">특기분야</label><select value={sheetData.specialty || ""} onChange={(e) => onChange("specialty", e.target.value)} className="w-full bg-zinc-900 text-white text-sm p-2 rounded border border-zinc-700 cursor-pointer"><option value="" disabled className="bg-zinc-900 text-zinc-400">선택</option>{SPECIALTIES.map(s => <option key={s} value={s} className="bg-zinc-900 text-white">{s}</option>)}</select></div>
             </div>
           </div>
         )}
 
         {/* ================= 2. 특기 탭 ================= */}
         {activeSheetTab === "특기" && (
-          <div className="w-full overflow-x-auto bg-white text-black p-2 rounded-lg border-2 border-zinc-700">
+          <div className="w-full overflow-x-auto bg-white text-black p-2 rounded-lg border-2 border-zinc-700 relative">
             <div className="flex justify-between items-center bg-black text-white px-3 py-1 font-bold rounded-t-sm">
               <label className="flex items-center gap-2 cursor-pointer"><span>목련</span><input type="checkbox" checked={sheetData.mokryun || false} onChange={(e) => onChange("mokryun", e.target.checked)} className="w-4 h-4" /></label>
               <span className="text-lg">특기</span>
               <label className="flex items-center gap-2 cursor-pointer"><span>마계공학</span><input type="checkbox" checked={sheetData.makyegonghak || false} onChange={(e) => onChange("makyegonghak", e.target.checked)} className="w-4 h-4" /></label>
             </div>
-            <table className="w-full border-collapse text-center text-xs border-x-2 border-b-2 border-black">
+
+            {rollResult && (
+              <div className={`flex items-center justify-between px-3 py-2 text-sm font-bold border-x-2 ${rollResult.success ? "bg-emerald-100 text-emerald-800 border-emerald-400" : "bg-rose-100 text-rose-800 border-rose-400"}`}>
+                <span>
+                  「{rollResult.skillName}」 판정 : {rollResult.dice[0]} + {rollResult.dice[1]} = {rollResult.total} (목표 {rollResult.target}) → {rollResult.success ? "성공" : "실패"}
+                </span>
+                <button type="button" onClick={() => setRollResult(null)} className="text-xs opacity-60 hover:opacity-100 ml-2 px-1">✕</button>
+              </div>
+            )}
+
+            <table className="w-full border-collapse text-center text-xs border-x-2 border-black">
               <thead>
                 <tr className="bg-gray-500 text-white border-b border-black">
                   <th className="w-8 border-r border-black"></th>
+                  <th className="p-0 bg-gray-700 border-r border-black">
+                    <div className="w-[14px] min-w-[14px]"></div>
+                  </th>
+                  
                   {SPECIALTIES.map((col, i) => (
-                    <th key={col} className="p-1.5 border-r border-black last:border-0 relative w-1/6 font-semibold">
-                      <div className="flex justify-center items-center gap-2">
-                        <span>{col}</span><input type="checkbox" checked={sheetData.gaps?.[i] || false} onChange={(e) => { const newGaps = [...(sheetData.gaps || [false,false,false,false,false,false])]; newGaps[i] = e.target.checked; onChange("gaps", newGaps); }} className="w-3.5 h-3.5 accent-zinc-800" />
-                      </div>
-                    </th>
+                    <React.Fragment key={col}>
+                      <th className="p-1 border-r border-black relative w-1/6 font-semibold">
+                        <div className="flex flex-col items-center gap-1">
+                          <label className={`flex items-center gap-1 text-[10px] px-1 rounded cursor-pointer transition-colors ${sheetData.lostFields?.[i] ? 'bg-red-800 text-white' : 'bg-gray-600 text-gray-300'}`}>
+                            <span>소실</span>
+                            <input 
+                              type="checkbox" 
+                              checked={sheetData.lostFields?.[i] || false} 
+                              onChange={(e) => {
+                                const newLost = [...(sheetData.lostFields || [false,false,false,false,false,false])];
+                                newLost[i] = e.target.checked;
+                                onChange("lostFields", newLost);
+                              }}
+                              className="w-2.5 h-2.5 accent-red-500 cursor-pointer"
+                            />
+                          </label>
+                          <div className="mt-0.5 text-[12px]">{col}</div>
+                        </div>
+                      </th>
+                      {i < 5 && (
+                        <th className="p-0 bg-gray-700 border-r border-black">
+                          <div className="w-[14px] min-w-[14px]"></div>
+                        </th>
+                      )}
+                    </React.Fragment>
                   ))}
                 </tr>
               </thead>
@@ -149,23 +267,64 @@ export function ShinobigamiSheet({ sheetData, onChange }: ShinobigamiSheetProps)
                 {SKILL_ROWS.map((row, rowIndex) => (
                    <tr key={rowIndex} className="border-b border-gray-300">
                      <td className="bg-gray-700 text-white font-bold border-r border-black py-0.5">{rowIndex + 2}</td>
-                     {row.map((skillName) => {
+                     
+                     <td className={`p-0 border-r border-black transition-colors duration-200 ${sheetData.specialty === '기술' ? 'bg-[#222] border-[#222]' : 'bg-white border-gray-300 border-dashed'}`}>
+                       <div className="w-[14px] min-w-[14px] h-[26px]"></div>
+                     </td>
+
+                     {row.map((skillName, colIndex) => {
                         const skill = getSkill(skillName);
+                        const isLost = sheetData.lostFields?.[colIndex] || false;
+                        
+                        const specIndex = SPECIALTIES.indexOf(sheetData.specialty);
+                        const gapFilled = specIndex === colIndex || specIndex === colIndex + 1;
+                        
                         return (
-                           <td key={skillName} className="p-0 border-r border-gray-300 last:border-0">
-                              <div className="flex items-center justify-between px-1 h-[26px]">
-                                 <input type="checkbox" checked={skill.isChecked} onChange={(e) => updateSkill(skillName, 'isChecked', e.target.checked)} className="w-3 h-3 cursor-pointer shrink-0" />
-                                 <span className="truncate mx-1 flex-1 text-[11px] leading-none">{skillName}</span>
-                                 <input type="number" value={skill.value} onChange={(e) => updateSkill(skillName, 'value', Number(e.target.value))} className="w-7 h-5 border border-gray-400 text-center text-[10px] bg-white text-black outline-none shrink-0 [&::-webkit-inner-spin-button]:appearance-none" />
-                              </div>
-                           </td>
+                           <React.Fragment key={skillName}>
+                             <td className="p-0 border-r border-gray-300">
+                                <div className="flex items-center px-1 h-[26px]">
+                                   <input type="checkbox" checked={skill.isChecked} onChange={(e) => updateSkill(skillName, 'isChecked', e.target.checked)} className="w-3 h-3 cursor-pointer shrink-0" />
+                                   
+                                   <button
+                                     type="button"
+                                     onClick={() => handleSkillRoll(skillName)}
+                                     className={`truncate mx-1 flex-1 text-[11px] leading-none text-center cursor-pointer ${isLost ? "text-gray-400" : "text-black hover:underline hover:text-indigo-700"}`}
+                                   >
+                                     {skillName}
+                                   </button>
+                                   
+                                   <span className={`w-5 h-5 flex items-center justify-end text-[11px] font-bold shrink-0 pr-1 ${isLost ? "text-gray-400" : skill.isChecked ? "text-indigo-700" : "text-gray-500"}`}>
+                                     {targetValues[skillName] ?? 12}
+                                   </span>
+                                </div>
+                             </td>
+                             
+                             {colIndex < 5 && (
+                               <td className={`p-0 border-r border-black transition-colors duration-200 ${gapFilled ? 'bg-[#222] border-[#222]' : 'bg-white border-gray-300 border-dashed'}`}>
+                                 <div className="w-[14px] min-w-[14px] h-[26px]"></div>
+                               </td>
+                             )}
+                           </React.Fragment>
                         )
                      })}
                    </tr>
                 ))}
               </tbody>
             </table>
-            <table className="w-full border-2 border-t-0 border-black border-collapse text-sm bg-white mt-[-2px]">
+            
+            <div className="flex justify-end items-center bg-black text-white p-1.5 border-x-2 border-b-2 border-black border-t">
+               <span className="text-xs font-bold mr-2">전문 분야</span>
+               <select 
+                 value={sheetData.specialty || ""}
+                 onChange={(e) => onChange("specialty", e.target.value)}
+                 className="bg-white text-black text-xs font-bold px-2 py-0.5 outline-none rounded-sm cursor-pointer"
+               >
+                 <option value="" disabled>선택</option>
+                 {SPECIALTIES.map(s => <option key={s} value={s}>{s}</option>)}
+               </select>
+            </div>
+            
+            <table className="w-full border-2 border-t-0 border-black border-collapse text-sm bg-white">
               <tbody>
                  <tr className="border-b border-black">
                     <th className="bg-white border-r border-black w-24 p-1 text-center font-bold text-sm">유파 조건</th>
@@ -248,7 +407,6 @@ export function ShinobigamiSheet({ sheetData, onChange }: ShinobigamiSheetProps)
                     ) : (
                       <input 
                         type="text" 
-                        /* 🔥 (sheetData.tools as any) 로 타입 에러 해결 */
                         value={(sheetData.tools as any)?.[`${item.key}Name`] ?? item.label} 
                         onChange={(e) => onChange("tools", { ...(sheetData.tools || {}), [`${item.key}Name`]: e.target.value })} 
                         placeholder="특수닌구" 
@@ -259,7 +417,6 @@ export function ShinobigamiSheet({ sheetData, onChange }: ShinobigamiSheetProps)
                   <div className="w-[55%] flex items-center justify-center bg-zinc-100">
                     <input 
                       type="number" min="0" max="6" 
-                      /* 🔥 여기도 (sheetData.tools as any) 적용 */
                       value={(sheetData.tools as any)?.[item.isFixed ? item.key : `${item.key}Count`] || 0} 
                       onChange={(e) => onChange("tools", { ...(sheetData.tools || {}), [item.isFixed ? item.key : `${item.key}Count`]: Number(e.target.value) })} 
                       className="w-full h-full bg-transparent text-center text-black font-semibold text-base outline-none" 
@@ -274,17 +431,14 @@ export function ShinobigamiSheet({ sheetData, onChange }: ShinobigamiSheetProps)
         {/* ================= 5. 오의 탭 ================= */}
         {activeSheetTab === "오의" && (
           <div className="w-full overflow-x-auto bg-white text-black border-2 border-black flex flex-col rounded-sm min-w-[500px]">
-            {/* 타이틀 */}
             <div className="bg-black text-white text-center py-2 font-bold text-2xl tracking-widest border-b-2 border-black">
               오의
             </div>
 
-            {/* 🔥 3개의 오의 블록 */}
             {Array.from({ length: 3 }).map((_, idx) => {
               const ougi = sheetData.ougi?.[idx] || { name: "", skill: "", effect: "", advantage: "", disadvantage: "", description: "" };
               return (
                 <div key={idx} className="flex flex-col border-b-2 border-black last:border-b-0 text-sm">
-                  {/* Row 1, 2, 3 */}
                   <div className="flex border-b border-gray-400 border-dashed">
                     <div className="w-28 bg-zinc-600 text-white font-bold text-center py-1 border-r border-gray-400">오의명</div>
                     <input type="text" className="flex-1 px-2 outline-none bg-transparent" value={ougi.name} onChange={(e) => handleOugiChange(idx, 'name', e.target.value)} />
@@ -298,7 +452,6 @@ export function ShinobigamiSheet({ sheetData, onChange }: ShinobigamiSheetProps)
                     <input type="text" className="flex-1 px-2 outline-none bg-transparent" value={ougi.effect} onChange={(e) => handleOugiChange(idx, 'effect', e.target.value)} />
                   </div>
                   
-                  {/* Row 4 (강점/약점) */}
                   <div className="flex border-b border-gray-400">
                     <div className="w-16 bg-zinc-600 text-white font-bold text-center py-1 border-r border-gray-400">강점</div>
                     <input type="text" className="flex-1 px-2 outline-none bg-transparent border-r border-gray-400" value={ougi.advantage} onChange={(e) => handleOugiChange(idx, 'advantage', e.target.value)} />
@@ -306,7 +459,6 @@ export function ShinobigamiSheet({ sheetData, onChange }: ShinobigamiSheetProps)
                     <input type="text" className="flex-1 px-2 outline-none bg-transparent" value={ougi.disadvantage} onChange={(e) => handleOugiChange(idx, 'disadvantage', e.target.value)} />
                   </div>
                   
-                  {/* Row 5 (설명) */}
                   <div className="flex bg-gray-100 min-h-[90px]">
                     <div className="w-28 bg-zinc-600 text-white font-bold text-center flex items-center justify-center border-r border-gray-400 p-2">설명</div>
                     <textarea className="flex-1 p-2 outline-none resize-none bg-transparent" value={ougi.description} onChange={(e) => handleOugiChange(idx, 'description', e.target.value)} />
@@ -315,7 +467,6 @@ export function ShinobigamiSheet({ sheetData, onChange }: ShinobigamiSheetProps)
               )
             })}
 
-            {/* 🔥 인법별 습득제한 모음 */}
             <div className="bg-zinc-600 text-white text-center py-2 font-bold text-lg tracking-widest border-y-2 border-black">
               인법별 습득제한 모음
             </div>
@@ -329,7 +480,6 @@ export function ShinobigamiSheet({ sheetData, onChange }: ShinobigamiSheetProps)
               <div className="flex-1 py-1">제한</div>
             </div>
             
-            {/* 6열 렌더링 (1~6 / 7~12) */}
             <div className="flex flex-col text-sm bg-white">
               {Array.from({length: 6}).map((_, i) => {
                 const limit1 = sheetData.ninpoLimits?.[i] || { clan: "", limit: "" };

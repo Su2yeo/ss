@@ -24,3 +24,29 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* 🔥 커스텀 스크롤바 디자인 (전체 적용) */
+html {
+  /* Firefox 브라우저용 스크롤바 설정 */
+  scrollbar-width: thin;
+  scrollbar-color: #3f3f46 transparent;
+}
+
+/* Chrome, Edge, Safari 등 WebKit 브라우저용 스크롤바 설정 */
+::-webkit-scrollbar {
+  width: 6px; /* 세로 스크롤바의 너비 (얇게) */
+  height: 6px; /* 가로 스크롤바의 높이 */
+}
+
+::-webkit-scrollbar-track {
+  background: transparent; /* 스크롤바 뒷 배경을 투명하게 처리 */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3f3f46; /* 스크롤바 막대 색상 (zinc-700 느낌) */
+  border-radius: 10px; /* 막대 위아래를 둥글게 */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #52525b; /* 마우스를 올렸을 때 조금 더 밝아지게 (zinc-600) */
+}

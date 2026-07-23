@@ -17,7 +17,7 @@ export function MessageItem({ message, isGrouped, isMine = false, isGMViewer = f
   const [showMenu, setShowMenu] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
-  
+
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -26,19 +26,17 @@ export function MessageItem({ message, isGrouped, isMine = false, isGMViewer = f
     };
   }, []);
 
-  // 🖱️ 우클릭 이벤트 (마우스 좌표 계산 제거, 단순히 띄우기만 함)
   const handleContextMenu = (e: React.MouseEvent) => {
-    if (!isMine && !isGMViewer) return; 
+    if (!isMine && !isGMViewer) return;
     e.preventDefault();
     setShowMenu(true);
   };
 
-  // 👆 꾹 누르기 이벤트
   const handleTouchStart = (e: React.TouchEvent) => {
     if (!isMine && !isGMViewer) return;
     timerRef.current = setTimeout(() => {
       setShowMenu(true);
-    }, 500); 
+    }, 500);
   };
 
   const handleTouchEndOrMove = () => {
@@ -59,41 +57,73 @@ export function MessageItem({ message, isGrouped, isMine = false, isGMViewer = f
     setShowMenu(false);
   };
 
-  // 🔥 드롭다운 메뉴 렌더러 (좌표 대신 Absolute를 사용하여 항상 메시지 근처에 뜨게 고정)
+  // 말풍선 옆에 붙는 드롭다운 메뉴 (수정/삭제)
   const renderMenu = () => {
     if (!showMenu) return null;
     return (
       <>
-        {/* 투명 배경 (클릭 시 메뉴 닫힘) */}
-        <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} onContextMenu={(e) => { e.preventDefault(); setShowMenu(false); }} />
-        
-        {/* 실제 메뉴 컨테이너 */}
-        <div 
-          className={`absolute z-50 bg-zinc-800 border border-zinc-700 rounded-lg shadow-2xl flex flex-col overflow-hidden w-28 ${
-            message.type === 'system' ? 'top-full left-1/2 -translate-x-1/2' : (isMine ? 'top-full right-16' : 'top-full left-20')
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setShowMenu(false)}
+          onContextMenu={(e) => { e.preventDefault(); setShowMenu(false); }}
+        />
+        <div
+          className={`absolute z-50 top-full mt-1 bg-zinc-800 border border-zinc-700 rounded-lg shadow-2xl flex flex-col overflow-hidden w-24 ${
+            isMine ? "right-0" : "left-0"
           }`}
-          style={{ marginTop: '-10px' }} // 메시지 창에 살짝 걸치게 조정
         >
           {(isGMViewer || message.type === "chat" || message.type === "gm") && (
-            <button onClick={() => { setIsEditing(true); setShowMenu(false); }} className="px-4 py-3 text-sm text-zinc-200 hover:bg-zinc-700 text-left transition-colors border-b border-zinc-700/50 font-medium">✏️ 수정</button>
+            <button
+              onClick={() => { setIsEditing(true); setShowMenu(false); }}
+              className="px-3 py-2 text-xs text-zinc-200 hover:bg-zinc-700 text-left transition-colors border-b border-zinc-700/50 font-medium"
+            >
+              ✏️ 수정
+            </button>
           )}
-          <button onClick={handleDelete} className="px-4 py-3 text-sm text-red-400 hover:bg-zinc-700 text-left transition-colors font-medium">🗑️ 삭제</button>
+          <button
+            onClick={handleDelete}
+            className="px-3 py-2 text-xs text-red-400 hover:bg-zinc-700 text-left transition-colors font-medium"
+          >
+            🗑️ 삭제
+          </button>
         </div>
       </>
     );
   };
 
   // ==========================================
-  // 1. 시스템 메시지 렌더링
+  // 1. 시스템 메시지 렌더링 
   // ==========================================
   if (message.type === "system") {
-    const hasImage = /\[img\]\((.*?)\)/.test(message.content);
     
+    // 🔥 추가된 부분: 우리가 보낸 물결 텍스트를 감지하면 말풍선 없이 예쁜 아이콘으로 교체!
+    if (message.content === "〰️〰️〰️") {
+      return (
+        <div className="relative w-full flex flex-col items-center">
+          <div
+            onContextMenu={handleContextMenu}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEndOrMove}
+            onTouchMove={handleTouchEndOrMove}
+            className={`flex justify-center py-6 my-2 w-full ${isGMViewer ? "cursor-pointer" : ""}`}
+          >
+            {/* 배경 없는 예쁜 물결 곡선 SVG 디자인 */}
+            <svg className="text-zinc-600/70" width="80" height="20" viewBox="0 0 80 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M 5 10 Q 10 2 15 10 T 25 10 T 35 10 T 45 10 T 55 10 T 65 10 T 75 10" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+            </svg>
+          </div>
+          {renderMenu()}
+        </div>
+      );
+    }
+
+    const hasImage = /\[img\]\((.*?)\)/.test(message.content);
+
     if (hasImage) {
       const parts = message.content.split(/(\[img\]\(.*?\))/g);
       return (
         <div className="relative w-full flex flex-col items-center">
-          <div 
+          <div
             onContextMenu={handleContextMenu}
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEndOrMove}
@@ -118,7 +148,7 @@ export function MessageItem({ message, isGrouped, isMine = false, isGMViewer = f
 
     return (
       <div className="relative w-full flex flex-col items-center">
-        <div 
+        <div
           onContextMenu={handleContextMenu}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEndOrMove}
@@ -135,21 +165,27 @@ export function MessageItem({ message, isGrouped, isMine = false, isGMViewer = f
   const isGM = message.type === "gm";
 
   // ==========================================
-  // 2. 일반 메시지 렌더링
+  // 2. 일반 / GM / 다이스 메시지 - 말풍선 렌더링
   // ==========================================
+  const bubbleColor = isMine
+    ? "bg-indigo-600 text-white rounded-br-md"
+    : isGM
+    ? "bg-amber-950/50 border border-amber-700/40 text-amber-50 rounded-bl-md"
+    : "bg-zinc-800 text-zinc-100 rounded-bl-md";
+
   const renderMessageContent = () => {
     if (isEditing) {
       return (
-        <div className="w-full flex flex-col gap-3">
+        <div className="w-64 flex flex-col gap-2">
           <textarea
             value={editContent}
             onChange={(e) => setEditContent(e.target.value)}
-            className="w-full bg-zinc-950/80 text-white p-3 border border-zinc-600 rounded outline-none resize-none min-h-[100px] text-base"
+            className="w-full bg-zinc-950/80 text-white p-2.5 border border-zinc-600 rounded-lg outline-none resize-none min-h-[80px] text-sm"
             autoFocus
           />
           <div className="flex justify-end gap-2">
-            <button onClick={() => { setIsEditing(false); setEditContent(message.content); }} className="px-4 py-1.5 rounded bg-zinc-700 text-sm hover:bg-zinc-600 text-white transition-colors">취소</button>
-            <button onClick={handleSaveEdit} className="px-4 py-1.5 rounded bg-indigo-600 text-white text-sm hover:bg-indigo-500 transition-colors">저장</button>
+            <button onClick={() => { setIsEditing(false); setEditContent(message.content); }} className="px-3 py-1 rounded bg-zinc-700 text-xs hover:bg-zinc-600 text-white transition-colors">취소</button>
+            <button onClick={handleSaveEdit} className="px-3 py-1 rounded bg-indigo-500 text-white text-xs hover:bg-indigo-400 transition-colors">저장</button>
           </div>
         </div>
       );
@@ -161,7 +197,7 @@ export function MessageItem({ message, isGrouped, isMine = false, isGMViewer = f
         <>
           {parts.map((part, idx) => {
             const imgMatch = part.match(/\[img\]\((.*?)\)/);
-            if (imgMatch) return <img key={idx} src={imgMatch[1]} alt="첨부 이미지" className="max-w-full h-auto rounded-lg mx-auto my-3 drop-shadow-md border border-zinc-700/50 pointer-events-none" />;
+            if (imgMatch) return <img key={idx} src={imgMatch[1]} alt="첨부 이미지" className="max-w-full h-auto rounded-lg my-2 pointer-events-none" />;
             return <span key={idx} className="pointer-events-none">{part}</span>;
           })}
         </>
@@ -170,16 +206,16 @@ export function MessageItem({ message, isGrouped, isMine = false, isGMViewer = f
 
     if (message.type === "dice" && message.diceResult) {
       return (
-        <div className="flex flex-col items-center justify-center text-center w-full pointer-events-none">
-          <span className={`block text-base mb-3 leading-relaxed ${isMine ? "text-indigo-50" : "text-zinc-100"}`}>
+        <div className="flex flex-col items-start text-left pointer-events-none">
+          <span className="block text-sm mb-2 leading-relaxed">
             {parseContentWithImages(message.content)}
           </span>
-          <div className="p-3 bg-black/30 border border-white/10 w-fit min-w-[220px] mt-1">
-            <span className="text-[11px] font-semibold tracking-wider opacity-80 block mb-1.5">ROLL: {message.diceResult.formula}</span>
-            <div className="flex items-center justify-center gap-2.5">
-              <span className="text-sm opacity-70">[{message.diceResult.rolls.join(", ")}]</span>
-              <span className="text-sm opacity-80">=</span>
-              <span className={`text-2xl font-bold ${isGM ? "text-amber-400" : "text-indigo-400"}`}>{message.diceResult.total}</span>
+          <div className="px-2.5 py-1.5 rounded-md bg-black/20 border border-white/10 w-fit">
+            <span className="text-[10px] font-semibold tracking-wide opacity-70 block mb-1">ROLL: {message.diceResult.formula}</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs opacity-70">[{message.diceResult.rolls.join(", ")}]</span>
+              <span className="text-xs opacity-70">=</span>
+              <span className="text-lg font-bold">{message.diceResult.total}</span>
             </div>
           </div>
         </div>
@@ -187,7 +223,7 @@ export function MessageItem({ message, isGrouped, isMine = false, isGMViewer = f
     }
 
     return (
-      <div className="text-base whitespace-pre-wrap break-words leading-[1.8] text-center w-full pointer-events-none">
+      <div className="text-sm whitespace-pre-wrap break-words leading-relaxed text-left pointer-events-none">
         {parseContentWithImages(message.content)}
       </div>
     );
@@ -196,49 +232,46 @@ export function MessageItem({ message, isGrouped, isMine = false, isGMViewer = f
   const timeString = formatMessageTime(message.createdAt);
 
   return (
-    <div className="relative w-full">
-      <div className={`flex w-full px-4 ${isMine ? "justify-end" : "justify-start"} mt-8 mb-4`}>
-        <div className={`flex w-full max-w-[90%] items-stretch gap-6 ${isMine ? "flex-row-reverse" : "flex-row"}`}>
-          
-          {!isGrouped ? (
-            <div className="w-40 shrink-0 bg-transparent flex items-center justify-center overflow-visible">
-              {message.authorPhotoURL ? (
-                <img src={message.authorPhotoURL} alt={message.authorName} className="w-full h-full object-contain drop-shadow-md" />
-              ) : (
-                <div className={`w-24 h-24 rounded-full flex items-center justify-center text-4xl font-bold border-2 ${isGM ? "bg-amber-950 border-amber-700/50 text-amber-500" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>
-                  {message.authorName.slice(0, 1)}
-                </div>
-              )}
+    <div className={`flex w-full px-3 ${isMine ? "justify-end" : "justify-start"} ${isGrouped ? "mt-0.5" : "mt-3"}`}>
+      <div className={`flex max-w-[75%] items-end gap-2 ${isMine ? "flex-row-reverse" : "flex-row"}`}>
+
+        {/* 프로필 사진 (32~36px, 그룹핑되면 자리만 남기고 숨김) */}
+        <div className="w-9 shrink-0 self-end">
+          {!isGrouped && (
+            message.authorPhotoURL ? (
+              <img src={message.authorPhotoURL} alt={message.authorName} className="w-9 h-9 rounded-full object-cover" />
+            ) : (
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${isGM ? "bg-amber-950 text-amber-500" : "bg-zinc-700 text-zinc-300"}`}>
+                {message.authorName.slice(0, 1)}
+              </div>
+            )
+          )}
+        </div>
+
+        <div className={`flex flex-col ${isMine ? "items-end" : "items-start"}`}>
+          {!isGrouped && (
+            <div className={`flex items-baseline gap-1.5 mb-1 px-1 ${isMine ? "flex-row-reverse" : "flex-row"}`}>
+              <span className={`text-xs font-semibold ${isGM ? "text-amber-400" : "text-zinc-400"}`}>{message.authorName}</span>
+              {isGM && <span className="text-[9px] font-bold text-amber-500/80 border border-amber-500/40 px-1 rounded bg-amber-500/10">GM</span>}
+              <span className="text-[10px] text-zinc-500">{timeString}</span>
             </div>
-          ) : (
-            <div className="w-40 shrink-0 bg-transparent"></div>
           )}
 
-          <div className="flex-1 flex flex-col justify-end">
-            {!isGrouped && (
-              <div className={`flex items-baseline gap-3 mb-2 px-1 ${isMine ? "justify-end flex-row-reverse" : "justify-start flex-row"}`}>
-                <span className={`text-[15px] font-bold tracking-wide ${isGM ? "text-amber-400" : "text-zinc-300"}`}>{message.authorName}</span>
-                {isGM && <span className="text-[10px] font-bold text-amber-500/80 border border-amber-500/40 px-1.5 py-0.5 bg-amber-500/10">GM</span>}
-                <span className="text-xs text-zinc-500 tracking-wide">{timeString}</span>
-              </div>
-            )}
-
-            <div 
+          {/* 말풍선 + 드롭다운 메뉴 묶음 */}
+          <div className="relative inline-block">
+            <div
               onContextMenu={handleContextMenu}
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEndOrMove}
               onTouchMove={handleTouchEndOrMove}
-              className={`flex-1 flex flex-col justify-center items-center min-h-[6rem] px-8 py-5 shadow-md border-2 relative cursor-pointer ${
-              isMine ? "bg-zinc-800 border-zinc-600 text-white hover:border-zinc-500" : (isGM ? "bg-amber-950/40 border-amber-700/50 text-amber-50" : "bg-zinc-900 border-zinc-600 text-zinc-100")
-            }`}>
+              className={`px-3.5 py-2 rounded-2xl shadow-sm cursor-pointer ${bubbleColor}`}
+            >
               {renderMessageContent()}
             </div>
+            {renderMenu()}
           </div>
         </div>
       </div>
-      
-      {/* 메뉴 렌더링 호출 */}
-      {renderMenu()}
     </div>
   );
 }

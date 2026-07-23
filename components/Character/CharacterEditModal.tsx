@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "@/firebase/config";
 import type { Character } from "@/types/character";
-import { ShinobigamiSheet } from "@/components/Character/Sheets/ShinobigamiSheet"; // 🔥 분리한 컴포넌트 불러오기
+import { ShinobigamiSheet } from "@/components/Character/Sheets/ShinobigamiSheet"; 
 
 interface CharacterEditModalProps {
   roomId: string;
@@ -14,6 +15,12 @@ interface CharacterEditModalProps {
 }
 
 export function CharacterEditModal({ roomId, character, onClose, onUpdate }: CharacterEditModalProps) {
+  // 🔥 화면에 안전하게 렌더링하기 위한 상태 추가
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const [name, setName] = useState(character.name);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(character.avatarUrl || null);
@@ -75,7 +82,8 @@ export function CharacterEditModal({ roomId, character, onClose, onUpdate }: Cha
     setSheetData((prev: any) => ({ ...prev, [field]: value }));
   };
 
-  return (
+  // 🔥 return 대신 모달 내용을 변수에 저장
+  const modalContent = (
     <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
       <div 
         style={{ width: modalSize.width, height: modalSize.height }}
@@ -95,9 +103,13 @@ export function CharacterEditModal({ roomId, character, onClose, onUpdate }: Cha
           </div>
         </div>
 
-        {/* 🔥 분리한 시노비가미 시트 컴포넌트를 여기에 렌더링! */}
         {character.sheetType === "shinobigami" && (
-          <ShinobigamiSheet sheetData={sheetData} onChange={handleChange} />
+          <ShinobigamiSheet 
+            roomId={roomId} 
+            character={character} 
+            sheetData={sheetData} 
+            onChange={handleChange} 
+          />
         )}
 
         <div className="flex gap-3 mt-4 shrink-0">
@@ -114,4 +126,8 @@ export function CharacterEditModal({ roomId, character, onClose, onUpdate }: Cha
       </div>
     </div>
   );
+
+  // 🔥 createPortal을 사용하여 모달을 화면의 가장 바깥쪽에 렌더링
+  if (!mounted) return null;
+  return createPortal(modalContent, document.body);
 }

@@ -39,11 +39,12 @@ export default function Home() {
 
   return (
     <div className="flex h-screen flex-col items-center justify-center gap-4 bg-gray-900 text-white">
-      <h1 className="text-2xl font-bold">TRPG 플랫폼</h1>
+      {/* 🔥 화면에 보이는 제목을 김냄비로 수정했습니다! */}
+      <h1 className="text-2xl font-bold">김냄비</h1>
 
       {user ? (
         <div className="flex flex-col items-center gap-3">
-          <p>{user.displayName}님, 환영합니다!</p>
+          <p>{user.displayName}님, 펌피럽하세요.</p>
           <button
             onClick={handleLogout}
             className="rounded-lg bg-red-500 px-4 py-2 hover:bg-red-600"

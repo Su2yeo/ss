@@ -12,9 +12,11 @@ interface ChatInputProps {
   ) => Promise<void>;
   sending: boolean;
   isGM: boolean;
+  // 🔥 현재 열려있는 채팅 탭이 무엇인지 알려주는 속성 추가
+  chatCategory: "main" | "ooc"; 
 }
 
-export function ChatInput({ onSend, sending, isGM }: ChatInputProps) {
+export function ChatInput({ onSend, sending, isGM, chatCategory }: ChatInputProps) {
   const [value, setValue] = useState("");
   const [asGM, setAsGM] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -73,7 +75,8 @@ export function ChatInput({ onSend, sending, isGM }: ChatInputProps) {
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="메시지 입력... (주사위 굴림: /r 1d100)"
+          // 🔥 탭에 따라 입력창 안내 텍스트 변경
+          placeholder={chatCategory === "main" ? "본편 롤플레이 입력... (주사위: /r 1d100)" : "플레이어 잡담(OOC) 입력..."}
           rows={1}
           className="flex-1 resize-none rounded-xl bg-zinc-800 text-sm text-zinc-100 placeholder:text-zinc-500 px-4 py-2.5 max-h-40 focus:outline-none focus:ring-1 focus:ring-zinc-600"
         />

@@ -9,6 +9,7 @@ import { ChatSheet } from "@/components/Chat/ChatSheet";
 import MapBoard from "@/components/Map/MapBoard";
 import { MenuSidebar } from "@/components/Sidebar/MenuSidebar";
 import { GMSidebar } from "@/components/Sidebar/GMSidebar"; 
+import { HandoutBoard } from "@/components/Sidebar/HandoutBoard";
 import type { Character } from "@/types/character";
 
 interface RoomPageProps {
@@ -24,8 +25,8 @@ export default function RoomPage({ params }: RoomPageProps) {
 
   const [activeCharacter, setActiveCharacter] = useState<Character | null>(null);
   
-  // 🔥 탭 상태: chat, menu, gm 3가지
-  const [activeTab, setActiveTab] = useState<"chat" | "menu" | "gm">("chat");
+  // 🔥 탭 상태: 4가지로 확장 (chat, character, handout, gm)
+  const [activeTab, setActiveTab] = useState<"chat" | "character" | "handout" | "gm">("chat");
   const [rightPanelWidth, setRightPanelWidth] = useState(400);
 
   const isWide = rightPanelWidth >= 700;
@@ -69,8 +70,6 @@ export default function RoomPage({ params }: RoomPageProps) {
   if (roomError || !room) return <div className="flex h-screen items-center justify-center bg-zinc-950 text-red-400">{roomError}</div>;
 
   const currentUser = { uid: user.uid, displayName: user.displayName ?? "이름없음", photoURL: user.photoURL };
-  
-  // 🔥 내가 GM인지 확인하는 변수
   const isGM = room.gmId === user.uid;
 
  return (
@@ -84,7 +83,7 @@ export default function RoomPage({ params }: RoomPageProps) {
 
         <div 
           onMouseDown={handleMouseDown}
-          className="w-1.5 h-full bg-zinc-800 hover:bg-indigo-500 cursor-col-resize z-50 transition-colors flex items-center justify-center group"
+          className="w-1.5 h-full bg-zinc-800 hover:bg-indigo-500 cursor-col-resize z-30 transition-colors flex items-center justify-center group"
         >
            <div className="w-0.5 h-8 bg-zinc-600 group-hover:bg-white rounded-full"></div>
         </div>
@@ -93,7 +92,7 @@ export default function RoomPage({ params }: RoomPageProps) {
           
           {/* 하단 탭 영역 (좁은 화면일 때) */}
           {!isWide && (
-            <div className="flex px-3 pt-3 bg-zinc-950 border-b border-zinc-700 gap-1 shrink-0 overflow-x-auto">
+            <div className="flex px-3 pt-3 bg-zinc-950 border-b border-zinc-700 gap-1 shrink-0 overflow-x-auto scrollbar-hide">
               <button
                 onClick={() => setActiveTab("chat")}
                 className={`px-4 py-2 text-sm font-bold rounded-t-lg border-t border-x transition-colors whitespace-nowrap ${
@@ -102,16 +101,27 @@ export default function RoomPage({ params }: RoomPageProps) {
               >
                 💬 채팅
               </button>
+              
+              {/* 캐릭터 관리 탭 */}
               <button
-                onClick={() => setActiveTab("menu")}
+                onClick={() => setActiveTab("character")}
                 className={`px-4 py-2 text-sm font-bold rounded-t-lg border-t border-x transition-colors whitespace-nowrap ${
-                  activeTab === "menu" ? "bg-zinc-900 border-zinc-700 text-indigo-400 translate-y-[1px] border-b-zinc-900" : "bg-zinc-950 border-transparent text-zinc-500 hover:bg-zinc-900"
+                  activeTab === "character" ? "bg-zinc-900 border-zinc-700 text-indigo-400 translate-y-[1px] border-b-zinc-900" : "bg-zinc-950 border-transparent text-zinc-500 hover:bg-zinc-900"
                 }`}
               >
-                🎭 게임 메뉴
+                👤 캐릭터 관리
+              </button>
+
+              {/* 핸드아웃 탭 */}
+              <button
+                onClick={() => setActiveTab("handout")}
+                className={`px-4 py-2 text-sm font-bold rounded-t-lg border-t border-x transition-colors whitespace-nowrap ${
+                  activeTab === "handout" ? "bg-zinc-900 border-zinc-700 text-indigo-400 translate-y-[1px] border-b-zinc-900" : "bg-zinc-950 border-transparent text-zinc-500 hover:bg-zinc-900"
+                }`}
+              >
+                📜 핸드아웃
               </button>
               
-              {/* 🔥 GM일 때만 3번째 탭 표시 */}
               {isGM && (
                 <button
                   onClick={() => setActiveTab("gm")}
@@ -135,17 +145,23 @@ export default function RoomPage({ params }: RoomPageProps) {
 
             {isWide && <div className="w-[1px] h-full bg-zinc-800"></div>}
 
-            {/* 2. 사이드바 (메뉴 or GM) */}
+            {/* 2. 사이드바 영역 (캐릭터 / 핸드아웃 / GM) */}
             <div className={`h-full ${isWide || activeTab !== "chat" ? "flex flex-col" : "hidden"} ${isWide ? "w-[320px] shrink-0" : "w-full"}`}>
               
               {/* 넓은 화면(isWide)일 때는 위쪽에 작은 탭 버튼 띄우기 */}
               {isWide && (
                 <div className="flex bg-zinc-950 border-b border-zinc-800 p-1 gap-1">
                   <button 
-                    onClick={() => setActiveTab("menu")} 
-                    className={`flex-1 py-1 text-xs font-bold rounded transition-colors ${activeTab !== "gm" ? "bg-zinc-800 text-indigo-300" : "text-zinc-500 hover:bg-zinc-800"}`}
+                    onClick={() => setActiveTab("character")} 
+                    className={`flex-1 py-1 text-xs font-bold rounded transition-colors ${activeTab === "character" ? "bg-zinc-800 text-indigo-300" : "text-zinc-500 hover:bg-zinc-800"}`}
                   >
-                    🎭 게임 메뉴
+                    👤 캐릭터 관리
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab("handout")} 
+                    className={`flex-1 py-1 text-xs font-bold rounded transition-colors ${activeTab === "handout" ? "bg-zinc-800 text-indigo-300" : "text-zinc-500 hover:bg-zinc-800"}`}
+                  >
+                    📜 핸드아웃
                   </button>
                   
                   {isGM && (
@@ -159,18 +175,34 @@ export default function RoomPage({ params }: RoomPageProps) {
                 </div>
               )}
 
-              <div className="flex-1 overflow-hidden">
+              <div className="flex-1 overflow-hidden relative">
                 {/* 탭 상태에 따라 렌더링 변경 */}
-                {activeTab === "gm" && isGM ? (
-                  <GMSidebar roomId={roomId} room={room} />
-                ) : (
-                  <MenuSidebar 
-                    roomId={roomId} 
-                    currentUser={currentUser} 
-                    room={room} 
-                    activeCharacter={activeCharacter} 
-                    setActiveCharacter={setActiveCharacter} 
-                  />
+                
+                {/* 캐릭터 관리 탭 */}
+                {(activeTab === "character" || (isWide && activeTab === "chat")) && (
+                  <div className="absolute inset-0 bg-zinc-900">
+                    <MenuSidebar 
+                      roomId={roomId} 
+                      currentUser={currentUser} 
+                      room={room} 
+                      activeCharacter={activeCharacter} 
+                      setActiveCharacter={setActiveCharacter} 
+                    />
+                  </div>
+                )}
+                
+                {/* 🔥 핸드아웃 탭 연결 완료 */}
+                {activeTab === "handout" && (
+                  <div className="absolute inset-0 bg-zinc-900">
+                    <HandoutBoard roomId={roomId} room={room} isGM={isGM} />
+                  </div>
+                )}
+
+                {/* GM 패널 탭 */}
+                {activeTab === "gm" && isGM && (
+                  <div className="absolute inset-0 bg-zinc-900">
+                    <GMSidebar roomId={roomId} room={room} />
+                  </div>
                 )}
               </div>
 
@@ -185,7 +217,6 @@ export default function RoomPage({ params }: RoomPageProps) {
         <div className="absolute inset-0">
           <MapBoard roomId={roomId} currentUser={currentUser} isGM={isGM} />
         </div>
-        {/* 🔥 ChatSheet에 room, activeCharacter 데이터도 넘겨주도록 수정! */}
         <ChatSheet 
           roomId={roomId} 
           currentUser={currentUser} 

@@ -9,15 +9,16 @@ import {
   onSnapshot,
   addDoc,
   serverTimestamp,
-  doc, // 🔥 추가
-  updateDoc, // 🔥 추가
-  deleteDoc, // 🔥 추가
+  doc,
+  updateDoc,
+  deleteDoc,
   type Unsubscribe,
 } from "firebase/firestore";
 import { db } from "@/firebase/config";
 import type { ChatMessage, NewChatMessageInput } from "@/types/chat";
 
-const PAGE_SIZE = 50;
+// 🔥 본편과 잡담이 나뉘므로 넉넉하게 100개로 증가
+const PAGE_SIZE = 100; 
 
 interface UseChatMessagesResult {
   messages: ChatMessage[];
@@ -25,16 +26,10 @@ interface UseChatMessagesResult {
   error: string | null;
   sendMessage: (input: NewChatMessageInput) => Promise<void>;
   sending: boolean;
-  updateMessage: (id: string, newContent: string) => Promise<void>; // 🔥 추가
-  deleteMessage: (id: string) => Promise<void>; // 🔥 추가
+  updateMessage: (id: string, newContent: string) => Promise<void>;
+  deleteMessage: (id: string) => Promise<void>;
 }
 
-/**
- * rooms/{roomId}/chat 컬렉션을 실시간 구독한다.
- *
- * 비용 절감을 위해 최근 PAGE_SIZE개만 구독하며,
- * "오래된 메시지 불러오기"(페이지네이션)는 로그 검색 단계에서 별도 구현 예정.
- */
 export function useChatMessages(roomId: string): UseChatMessagesResult {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,7 +51,7 @@ export function useChatMessages(roomId: string): UseChatMessagesResult {
       (snapshot) => {
         const next = snapshot.docs
           .map((doc) => ({ id: doc.id, ...doc.data() }) as ChatMessage)
-          .reverse(); // 오래된 -> 최신 순으로 정렬해서 렌더링
+          .reverse(); 
         setMessages(next);
         setLoading(false);
       },
@@ -94,7 +89,6 @@ export function useChatMessages(roomId: string): UseChatMessagesResult {
     [roomId]
   );
 
-  // 🔥 메시지 수정 함수 추가
   const updateMessage = useCallback(
     async (messageId: string, newContent: string) => {
       if (!roomId || !newContent.trim()) return;
@@ -111,7 +105,6 @@ export function useChatMessages(roomId: string): UseChatMessagesResult {
     [roomId]
   );
 
-  // 🔥 메시지 삭제 함수 추가
   const deleteMessage = useCallback(
     async (messageId: string) => {
       if (!roomId) return;
