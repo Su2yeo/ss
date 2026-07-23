@@ -78,7 +78,7 @@ export function ChatInput({ onSend, sending, isGM, chatCategory }: ChatInputProp
           // 🔥 탭에 따라 입력창 안내 텍스트 변경
           placeholder={chatCategory === "main" ? "본편 롤플레이 입력... (주사위: /r 1d100)" : "플레이어 잡담(OOC) 입력..."}
           rows={1}
-          className="flex-1 resize-none rounded-xl bg-zinc-800 text-sm text-zinc-100 placeholder:text-zinc-500 px-4 py-2.5 max-h-40 focus:outline-none focus:ring-1 focus:ring-zinc-600"
+          className="flex-1 resize-none rounded-xl bg-zinc-800 text-base md:text-sm text-zinc-100 placeholder:text-zinc-500 px-4 py-2.5 max-h-40 focus:outline-none focus:ring-1 focus:ring-zinc-600"
         />
         <button
           onClick={handleSubmit}
