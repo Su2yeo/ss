@@ -5,7 +5,12 @@ export interface ShinobigamiData {
 
   mokryun: boolean; makyegonghak: boolean; gaps: boolean[]; lostFields: boolean[];
   skills: Record<string, { isChecked: boolean; value: number }>;
-  clanCondition: string; advantage: string; disadvantage: string;
+  
+  clanCondition: string; 
+  advantageTitle: string; // 🔥 추가됨
+  advantage: string; 
+  disadvantageTitle: string; // 🔥 추가됨
+  disadvantage: string;
 
   hp: { tech: boolean; body: boolean; nin: boolean; plot: boolean; tactics: boolean; magic: boolean; };
   ninpo: Array<{ name: string; type: string; skill: string; range: string; cost: string; effect: string }>;
@@ -26,7 +31,8 @@ export const initialShinobigamiData: ShinobigamiData = {
   age: "", gender: "", pcNumber: "", clan: "", subClan: "", additionalHp: 0,
   style: "", meritPoints: 0, nemesis: "", belief: "", publicIdentity: "", rank: "중닌", specialty: "",
   mokryun: false, makyegonghak: false, gaps: [false, false, false, false, false, false], lostFields: [false, false, false, false, false, false],
-  skills: {}, clanCondition: "", advantage: "", disadvantage: "",
+  // 🔥 초기값에도 advantageTitle과 disadvantageTitle을 빈 문자열로 추가해 줍니다.
+  skills: {}, clanCondition: "", advantageTitle: "", advantage: "", disadvantageTitle: "", disadvantage: "",
   hp: { tech: true, body: true, nin: true, plot: true, tactics: true, magic: true },
   ninpo: [], 
   tools: { 

@@ -4,9 +4,8 @@ import React, { useState, useMemo } from "react";
 import type { ShinobigamiData } from "@/types/rules/shinobigami";
 import { CLANS, SUB_CLANS, BELIEFS, RANKS, SPECIALTIES, SKILL_ROWS } from "@/types/rules/shinobigami";
 import type { Character } from "@/types/character";
-import { useChatMessages } from "@/hooks/useChatMessages"; // 🔥 채팅 훅 불러오기
+import { useChatMessages } from "@/hooks/useChatMessages";
 
-// 🔥 roomId와 character를 부모로부터 전달받습니다.
 interface ShinobigamiSheetProps {
   roomId: string;
   character: Character;
@@ -18,7 +17,6 @@ export function ShinobigamiSheet({ roomId, character, sheetData, onChange }: Shi
   const [activeSheetTab, setActiveSheetTab] = useState<string>("기본 정보");
   const tabs = ["기본 정보", "특기", "인법 리스트", "닌구", "오의"];
 
-  // 🔥 채팅 전송 함수 가져오기
   const { sendMessage } = useChatMessages(roomId);
 
   const handleClanChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -34,7 +32,6 @@ export function ShinobigamiSheet({ roomId, character, sheetData, onChange }: Shi
     onChange("skills", { ...sheetData.skills, [name]: { ...current, [field]: val } });
   };
 
-  // 🔥 특기 목표값(판정 수치) 자동 계산
   const targetValues = useMemo(() => {
     const rows = SKILL_ROWS.length;
     const cols = SKILL_ROWS[0].length;
@@ -105,7 +102,6 @@ export function ShinobigamiSheet({ roomId, character, sheetData, onChange }: Shi
     success: boolean;
   } | null>(null);
 
-  // 🔥 주사위 굴림 핸들러: 시트 내부 화면에 띄우고, 채팅방으로도 전송합니다.
   const handleSkillRoll = async (skillName: string) => {
     const target = targetValues[skillName] ?? 12;
     const d1 = Math.floor(Math.random() * 6) + 1;
@@ -113,10 +109,8 @@ export function ShinobigamiSheet({ roomId, character, sheetData, onChange }: Shi
     const total = d1 + d2;
     const success = total >= target;
     
-    // 1. 시트 내부 결과 배너 표시
     setRollResult({ skillName, target, dice: [d1, d2], total, success });
 
-    // 2. 채팅창으로 주사위 결과 전송 (본편 탭)
     const formulaStr = `2d6>=${target} (${skillName})`;
     const contentMessage = `「${skillName}」 판정 (목표값: ${target})`;
     
@@ -127,7 +121,7 @@ export function ShinobigamiSheet({ roomId, character, sheetData, onChange }: Shi
         authorName: character.name,
         authorPhotoURL: character.avatarUrl,
         content: contentMessage,
-        category: "main", // 특기 판정이므로 '본편' 채팅으로 전송
+        category: "main", 
         diceResult: {
           formula: formulaStr,
           rolls: [d1, d2],
@@ -165,7 +159,7 @@ export function ShinobigamiSheet({ roomId, character, sheetData, onChange }: Shi
 
   return (
     <div className="flex flex-col mt-4 bg-zinc-950 rounded-xl border border-zinc-800 flex-1 min-h-0 overflow-hidden">
-      <div className="flex bg-zinc-900 border-b border-zinc-800 overflow-x-auto shrink-0 scrollbar-hide">
+      <div className="flex bg-zinc-900 border-b border-zinc-800 overflow-x-auto shrink-0 scrollbar-hide [&::-webkit-scrollbar]:hidden">
         {tabs.map((tab) => (
           <button
             key={tab}
@@ -177,7 +171,8 @@ export function ShinobigamiSheet({ roomId, character, sheetData, onChange }: Shi
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 bg-zinc-950/50">
+      {/* 🔥 1. 전체 스크롤바 숨김 적용 */}
+      <div className="flex-1 overflow-y-auto p-4 bg-zinc-950/50 scrollbar-hide [&::-webkit-scrollbar]:hidden">
         
         {/* ================= 1. 기본 정보 탭 ================= */}
         {activeSheetTab === "기본 정보" && (
@@ -210,179 +205,219 @@ export function ShinobigamiSheet({ roomId, character, sheetData, onChange }: Shi
 
         {/* ================= 2. 특기 탭 ================= */}
         {activeSheetTab === "특기" && (
-          <div className="w-full overflow-x-auto bg-white text-black p-2 rounded-lg border-2 border-zinc-700 relative">
-            <div className="flex justify-between items-center bg-black text-white px-3 py-1 font-bold rounded-t-sm">
-              <label className="flex items-center gap-2 cursor-pointer"><span>목련</span><input type="checkbox" checked={sheetData.mokryun || false} onChange={(e) => onChange("mokryun", e.target.checked)} className="w-4 h-4" /></label>
-              <span className="text-lg">특기</span>
-              <label className="flex items-center gap-2 cursor-pointer"><span>마계공학</span><input type="checkbox" checked={sheetData.makyegonghak || false} onChange={(e) => onChange("makyegonghak", e.target.checked)} className="w-4 h-4" /></label>
-            </div>
-
-            {rollResult && (
-              <div className={`flex items-center justify-between px-3 py-2 text-sm font-bold border-x-2 ${rollResult.success ? "bg-emerald-100 text-emerald-800 border-emerald-400" : "bg-rose-100 text-rose-800 border-rose-400"}`}>
-                <span>
-                  「{rollResult.skillName}」 판정 : {rollResult.dice[0]} + {rollResult.dice[1]} = {rollResult.total} (목표 {rollResult.target}) → {rollResult.success ? "성공" : "실패"}
-                </span>
-                <button type="button" onClick={() => setRollResult(null)} className="text-xs opacity-60 hover:opacity-100 ml-2 px-1">✕</button>
+          /* 🔥 2. 특기 탭 스크롤 분리: 부모는 스크롤, 자식은 넓게 늘어남 */
+          <div className="w-full overflow-x-auto scrollbar-hide [&::-webkit-scrollbar]:hidden">
+            <div className="min-w-[720px] min-w-full w-max bg-white text-black p-2 rounded-lg border-2 border-zinc-700 relative">
+              <div className="flex justify-between items-center bg-black text-white px-3 py-1 font-bold rounded-t-sm">
+                <label className="flex items-center gap-2 cursor-pointer"><span>목련</span><input type="checkbox" checked={sheetData.mokryun || false} onChange={(e) => onChange("mokryun", e.target.checked)} className="w-4 h-4" /></label>
+                <span className="text-lg">특기</span>
+                <label className="flex items-center gap-2 cursor-pointer"><span>마계공학</span><input type="checkbox" checked={sheetData.makyegonghak || false} onChange={(e) => onChange("makyegonghak", e.target.checked)} className="w-4 h-4" /></label>
               </div>
-            )}
 
-            <table className="w-full border-collapse text-center text-xs border-x-2 border-black">
-              <thead>
-                <tr className="bg-gray-500 text-white border-b border-black">
-                  <th className="w-8 border-r border-black"></th>
-                  <th className="p-0 bg-gray-700 border-r border-black">
-                    <div className="w-[14px] min-w-[14px]"></div>
-                  </th>
-                  
-                  {SPECIALTIES.map((col, i) => (
-                    <React.Fragment key={col}>
-                      <th className="p-1 border-r border-black relative w-1/6 font-semibold">
-                        <div className="flex flex-col items-center gap-1">
-                          <label className={`flex items-center gap-1 text-[10px] px-1 rounded cursor-pointer transition-colors ${sheetData.lostFields?.[i] ? 'bg-red-800 text-white' : 'bg-gray-600 text-gray-300'}`}>
-                            <span>소실</span>
-                            <input 
-                              type="checkbox" 
-                              checked={sheetData.lostFields?.[i] || false} 
-                              onChange={(e) => {
-                                const newLost = [...(sheetData.lostFields || [false,false,false,false,false,false])];
-                                newLost[i] = e.target.checked;
-                                onChange("lostFields", newLost);
-                              }}
-                              className="w-2.5 h-2.5 accent-red-500 cursor-pointer"
-                            />
-                          </label>
-                          <div className="mt-0.5 text-[12px]">{col}</div>
-                        </div>
-                      </th>
-                      {i < 5 && (
-                        <th className="p-0 bg-gray-700 border-r border-black">
-                          <div className="w-[14px] min-w-[14px]"></div>
+              {rollResult && (
+                <div className={`flex items-center justify-between px-3 py-2 text-sm font-bold border-x-2 ${rollResult.success ? "bg-emerald-100 text-emerald-800 border-emerald-400" : "bg-rose-100 text-rose-800 border-rose-400"}`}>
+                  <span>
+                    「{rollResult.skillName}」 판정 : {rollResult.dice[0]} + {rollResult.dice[1]} = {rollResult.total} (목표 {rollResult.target}) → {rollResult.success ? "성공" : "실패"}
+                  </span>
+                  <button type="button" onClick={() => setRollResult(null)} className="text-xs opacity-60 hover:opacity-100 ml-2 px-1">✕</button>
+                </div>
+              )}
+
+              <table className="w-full border-collapse text-center text-xs border-x-2 border-black">
+                <thead>
+                  <tr className="bg-gray-500 text-white border-b border-black">
+                    <th className="w-8 border-r border-black"></th>
+                    <th className="p-0 bg-gray-700 border-r border-black">
+                      <div className="w-[14px] min-w-[14px]"></div>
+                    </th>
+                    
+                    {SPECIALTIES.map((col, i) => (
+                      <React.Fragment key={col}>
+                        <th className="p-1 border-r border-black relative w-1/6 font-semibold">
+                          <div className="flex flex-col items-center gap-1">
+                            <label className={`flex items-center gap-1 text-[10px] px-1 rounded cursor-pointer transition-colors ${sheetData.lostFields?.[i] ? 'bg-red-800 text-white' : 'bg-gray-600 text-gray-300'}`}>
+                              <span>소실</span>
+                              <input 
+                                type="checkbox" 
+                                checked={sheetData.lostFields?.[i] || false} 
+                                onChange={(e) => {
+                                  const newLost = [...(sheetData.lostFields || [false,false,false,false,false,false])];
+                                  newLost[i] = e.target.checked;
+                                  onChange("lostFields", newLost);
+                                }}
+                                className="w-2.5 h-2.5 accent-red-500 cursor-pointer"
+                              />
+                            </label>
+                            <div className="mt-0.5 text-[12px]">{col}</div>
+                          </div>
                         </th>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {SKILL_ROWS.map((row, rowIndex) => (
-                   <tr key={rowIndex} className="border-b border-gray-300">
-                     <td className="bg-gray-700 text-white font-bold border-r border-black py-0.5">{rowIndex + 2}</td>
-                     
-                     <td className={`p-0 border-r border-black transition-colors duration-200 ${sheetData.specialty === '기술' ? 'bg-[#222] border-[#222]' : 'bg-white border-gray-300 border-dashed'}`}>
-                       <div className="w-[14px] min-w-[14px] h-[26px]"></div>
-                     </td>
+                        {i < 5 && (
+                          <th className="p-0 bg-gray-700 border-r border-black">
+                            <div className="w-[14px] min-w-[14px]"></div>
+                          </th>
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {SKILL_ROWS.map((row, rowIndex) => (
+                     <tr key={rowIndex} className="border-b border-gray-300">
+                       <td className="bg-gray-700 text-white font-bold border-r border-black py-0.5">{rowIndex + 2}</td>
+                       
+                       <td className={`p-0 border-r border-black transition-colors duration-200 ${sheetData.specialty === '기술' ? 'bg-[#222] border-[#222]' : 'bg-white border-gray-300 border-dashed'}`}>
+                         <div className="w-[14px] min-w-[14px] h-[26px]"></div>
+                       </td>
 
-                     {row.map((skillName, colIndex) => {
-                        const skill = getSkill(skillName);
-                        const isLost = sheetData.lostFields?.[colIndex] || false;
-                        
-                        const specIndex = SPECIALTIES.indexOf(sheetData.specialty);
-                        const gapFilled = specIndex === colIndex || specIndex === colIndex + 1;
-                        
-                        return (
-                           <React.Fragment key={skillName}>
-                             <td className="p-0 border-r border-gray-300">
-                                <div className="flex items-center px-1 h-[26px]">
-                                   <input type="checkbox" checked={skill.isChecked} onChange={(e) => updateSkill(skillName, 'isChecked', e.target.checked)} className="w-3 h-3 cursor-pointer shrink-0" />
-                                   
-                                   <button
-                                     type="button"
-                                     onClick={() => handleSkillRoll(skillName)}
-                                     className={`truncate mx-1 flex-1 text-[11px] leading-none text-center cursor-pointer ${isLost ? "text-gray-400" : "text-black hover:underline hover:text-indigo-700"}`}
-                                   >
-                                     {skillName}
-                                   </button>
-                                   
-                                   <span className={`w-5 h-5 flex items-center justify-end text-[11px] font-bold shrink-0 pr-1 ${isLost ? "text-gray-400" : skill.isChecked ? "text-indigo-700" : "text-gray-500"}`}>
-                                     {targetValues[skillName] ?? 12}
-                                   </span>
-                                </div>
-                             </td>
-                             
-                             {colIndex < 5 && (
-                               <td className={`p-0 border-r border-black transition-colors duration-200 ${gapFilled ? 'bg-[#222] border-[#222]' : 'bg-white border-gray-300 border-dashed'}`}>
-                                 <div className="w-[14px] min-w-[14px] h-[26px]"></div>
+                       {row.map((skillName, colIndex) => {
+                          const skill = getSkill(skillName);
+                          const isLost = sheetData.lostFields?.[colIndex] || false;
+                          
+                          const specIndex = SPECIALTIES.indexOf(sheetData.specialty);
+                          const gapFilled = specIndex === colIndex || specIndex === colIndex + 1;
+                          
+                          return (
+                             <React.Fragment key={skillName}>
+                               <td className="p-0 border-r border-gray-300">
+                                  <div className="flex items-center px-1 h-[26px]">
+                                     <input type="checkbox" checked={skill.isChecked} onChange={(e) => updateSkill(skillName, 'isChecked', e.target.checked)} className="w-3 h-3 cursor-pointer shrink-0" />
+                                     
+                                     <button
+                                       type="button"
+                                       onClick={() => handleSkillRoll(skillName)}
+                                       className={`truncate mx-1 flex-1 text-[11px] leading-none text-center cursor-pointer ${isLost ? "text-gray-400" : "text-black hover:underline hover:text-indigo-700"}`}
+                                     >
+                                       {skillName}
+                                     </button>
+                                     
+                                     <span className={`w-5 h-5 flex items-center justify-end text-[11px] font-bold shrink-0 pr-1 ${isLost ? "text-gray-400" : skill.isChecked ? "text-indigo-700" : "text-gray-500"}`}>
+                                       {targetValues[skillName] ?? 12}
+                                     </span>
+                                  </div>
                                </td>
-                             )}
-                           </React.Fragment>
-                        )
-                     })}
+                               
+                               {colIndex < 5 && (
+                                 <td className={`p-0 border-r border-black transition-colors duration-200 ${gapFilled ? 'bg-[#222] border-[#222]' : 'bg-white border-gray-300 border-dashed'}`}>
+                                   <div className="w-[14px] min-w-[14px] h-[26px]"></div>
+                                 </td>
+                               )}
+                             </React.Fragment>
+                          )
+                       })}
+                     </tr>
+                  ))}
+                </tbody>
+              </table>
+              
+              <div className="flex justify-end items-center bg-black text-white p-1.5 border-x-2 border-b-2 border-black border-t">
+                 <span className="text-xs font-bold mr-2">전문 분야</span>
+                 <select 
+                   value={sheetData.specialty || ""}
+                   onChange={(e) => onChange("specialty", e.target.value)}
+                   className="bg-white text-black text-xs font-bold px-2 py-0.5 outline-none rounded-sm cursor-pointer"
+                 >
+                   <option value="" disabled>선택</option>
+                   {SPECIALTIES.map(s => <option key={s} value={s}>{s}</option>)}
+                 </select>
+              </div>
+              
+              <table className="w-full border-2 border-t-0 border-black border-collapse text-sm bg-white mt-4">
+                <tbody>
+                   <tr className="border-b border-black">
+                      <th className="bg-white border-r border-black w-24 p-1 text-center font-bold text-sm">유파 조건</th>
+                      <td className="p-1 bg-white"><input type="text" value={sheetData.clanCondition || ''} onChange={(e) => onChange("clanCondition", e.target.value)} className="w-full outline-none bg-transparent px-1 text-black" /></td>
                    </tr>
-                ))}
-              </tbody>
-            </table>
-            
-            <div className="flex justify-end items-center bg-black text-white p-1.5 border-x-2 border-b-2 border-black border-t">
-               <span className="text-xs font-bold mr-2">전문 분야</span>
-               <select 
-                 value={sheetData.specialty || ""}
-                 onChange={(e) => onChange("specialty", e.target.value)}
-                 className="bg-white text-black text-xs font-bold px-2 py-0.5 outline-none rounded-sm cursor-pointer"
-               >
-                 <option value="" disabled>선택</option>
-                 {SPECIALTIES.map(s => <option key={s} value={s}>{s}</option>)}
-               </select>
+                   <tr className="border-b border-gray-300">
+                      <th rowSpan={2} className="bg-white border-r border-black w-16 p-1 text-center font-bold text-sm">배경</th>
+                      <th className="bg-white border-r border-black w-12 p-1 text-center text-xs font-semibold text-gray-700">장점</th>
+                      <td colSpan={2} className="p-0 bg-white">
+                        <div className="flex flex-col">
+                          <input 
+                            type="text" 
+                            placeholder="제목" 
+                            value={sheetData.advantageTitle || ''} 
+                            onChange={(e) => onChange("advantageTitle" as any, e.target.value)} 
+                            className="w-full outline-none bg-transparent px-2 py-1 text-black font-bold border-b border-gray-300 text-sm" 
+                          />
+                          <input 
+                            type="text" 
+                            placeholder="내용" 
+                            value={sheetData.advantage || ''} 
+                            onChange={(e) => onChange("advantage", e.target.value)} 
+                            className="w-full outline-none bg-transparent px-2 py-1 text-black text-sm" 
+                          />
+                        </div>
+                      </td>
+                   </tr>
+                   <tr className="border-b border-black">
+                      <th className="bg-white border-r border-black w-12 p-1 text-center text-xs font-semibold text-gray-700">단점</th>
+                      <td colSpan={2} className="p-0 bg-white">
+                        <div className="flex flex-col">
+                          <input 
+                            type="text" 
+                            placeholder="제목" 
+                            value={sheetData.disadvantageTitle || ''} 
+                            onChange={(e) => onChange("disadvantageTitle" as any, e.target.value)} 
+                            className="w-full outline-none bg-transparent px-2 py-1 text-black font-bold border-b border-gray-300 text-sm" 
+                          />
+                          <input 
+                            type="text" 
+                            placeholder="내용" 
+                            value={sheetData.disadvantage || ''} 
+                            onChange={(e) => onChange("disadvantage", e.target.value)} 
+                            className="w-full outline-none bg-transparent px-2 py-1 text-black text-sm" 
+                          />
+                        </div>
+                      </td>
+                   </tr>
+                   <tr>
+                      <th className="bg-white border-r border-black w-24 py-2 px-1 text-center font-bold text-sm leading-tight">설정<br/><span className="text-[10px] font-normal text-gray-600">(백스토리)</span></th>
+                      <td colSpan={2} className="p-1 bg-white"><textarea value={sheetData.memo || ''} onChange={(e) => onChange("memo", e.target.value)} className="w-full h-16 outline-none bg-transparent resize-none px-1 text-sm text-black p-1"></textarea></td>
+                   </tr>
+                </tbody>
+              </table>
             </div>
-            
-            <table className="w-full border-2 border-t-0 border-black border-collapse text-sm bg-white">
-              <tbody>
-                 <tr className="border-b border-black">
-                    <th className="bg-white border-r border-black w-24 p-1 text-center font-bold text-sm">유파 조건</th>
-                    <td className="p-1 bg-white"><input type="text" value={sheetData.clanCondition || ''} onChange={(e) => onChange("clanCondition", e.target.value)} className="w-full outline-none bg-transparent px-1 text-black" /></td>
-                 </tr>
-                 <tr className="border-b border-gray-300">
-                    <th rowSpan={2} className="bg-white border-r border-black w-24 p-1 text-center font-bold text-sm">배경</th>
-                    <th className="bg-white border-r border-black w-14 p-1 text-center text-xs font-semibold text-gray-700">장점</th>
-                    <td className="p-1 bg-white"><input type="text" value={sheetData.advantage || ''} onChange={(e) => onChange("advantage", e.target.value)} className="w-full outline-none bg-transparent px-1 text-black" /></td>
-                 </tr>
-                 <tr className="border-b border-black">
-                    <th className="bg-white border-r border-black w-14 p-1 text-center text-xs font-semibold text-gray-700">단점</th>
-                    <td className="p-1 bg-white"><input type="text" value={sheetData.disadvantage || ''} onChange={(e) => onChange("disadvantage", e.target.value)} className="w-full outline-none bg-transparent px-1 text-black" /></td>
-                 </tr>
-                 <tr>
-                    <th className="bg-white border-r border-black w-24 py-2 px-1 text-center font-bold text-sm leading-tight">설정<br/><span className="text-[10px] font-normal text-gray-600">(백스토리)</span></th>
-                    <td colSpan={2} className="p-1 bg-white"><textarea value={sheetData.memo || ''} onChange={(e) => onChange("memo", e.target.value)} className="w-full h-16 outline-none bg-transparent resize-none px-1 text-sm text-black p-1"></textarea></td>
-                 </tr>
-              </tbody>
-            </table>
           </div>
         )}
 
         {/* ================= 3. 인법 리스트 탭 ================= */}
         {activeSheetTab === "인법 리스트" && (
-          <div className="w-full overflow-x-auto bg-white text-black p-2 rounded-lg border-2 border-zinc-700 min-w-[500px]">
-             <div className="bg-black text-white px-3 py-1 font-bold rounded-t-sm text-center text-lg">인법 리스트</div>
-             <table className="w-full border-collapse text-center text-xs border-x-2 border-b-2 border-black">
-                <thead>
-                   <tr className="bg-white border-b-2 border-black">
-                      <th className="p-1.5 border-r border-black font-bold w-[18%]">인법명</th>
-                      <th className="p-1.5 border-r border-black font-bold w-[12%]">타입</th>
-                      <th className="p-1.5 border-r border-black font-bold w-[15%]">지정특기</th>
-                      <th className="p-1.5 border-r border-black font-bold w-[10%]">간격</th>
-                      <th className="p-1.5 border-r border-black font-bold w-[10%]">코스트</th>
-                      <th className="p-1.5 font-bold">효과</th>
-                   </tr>
-                </thead>
-                <tbody>
-                   {Array.from({ length: 12 }).map((_, rowIndex) => {
-                      const ninpo = sheetData.ninpo?.[rowIndex] || { name: "", type: "", skill: "", range: "", cost: "", effect: "" };
-                      return (
-                         <tr key={rowIndex} className="border-b border-gray-400 border-dashed last:border-solid last:border-black">
-                            <td className="p-0 border-r border-black"><input type="text" value={ninpo.name} onChange={(e) => handleNinpoChange(rowIndex, "name", e.target.value)} className="w-full h-7 bg-transparent px-1 outline-none text-center font-semibold text-black" /></td>
-                            <td className="p-0 border-r border-black relative">
-                               <select value={ninpo.type} onChange={(e) => handleNinpoChange(rowIndex, "type", e.target.value)} className="w-full h-7 bg-transparent outline-none text-center text-black cursor-pointer px-1">
-                                  <option value=""></option><option value="공격">공격</option><option value="서포트">서포트</option><option value="장비">장비</option>
-                               </select>
-                            </td>
-                            <td className="p-0 border-r border-black"><input type="text" value={ninpo.skill} onChange={(e) => handleNinpoChange(rowIndex, "skill", e.target.value)} className="w-full h-7 bg-transparent px-1 outline-none text-center text-black" /></td>
-                            <td className="p-0 border-r border-black"><input type="text" value={ninpo.range} onChange={(e) => handleNinpoChange(rowIndex, "range", e.target.value)} className="w-full h-7 bg-transparent px-1 outline-none text-center text-black" /></td>
-                            <td className="p-0 border-r border-black"><input type="text" value={ninpo.cost} onChange={(e) => handleNinpoChange(rowIndex, "cost", e.target.value)} className="w-full h-7 bg-transparent px-1 outline-none text-center text-black" /></td>
-                            <td className="p-0"><input type="text" value={ninpo.effect} onChange={(e) => handleNinpoChange(rowIndex, "effect", e.target.value)} className="w-full h-7 bg-transparent px-2 outline-none text-left text-black" /></td>
-                         </tr>
-                      );
-                   })}
-                </tbody>
-             </table>
+          /* 🔥 3. 인법 리스트 탭 스크롤 분리 */
+          <div className="w-full overflow-x-auto scrollbar-hide [&::-webkit-scrollbar]:hidden">
+            <div className="min-w-[600px] min-w-full w-max bg-white text-black p-2 rounded-lg border-2 border-zinc-700">
+               <div className="bg-black text-white px-3 py-1 font-bold rounded-t-sm text-center text-lg">인법 리스트</div>
+               <table className="w-full border-collapse text-center text-xs border-x-2 border-b-2 border-black">
+                  <thead>
+                     <tr className="bg-white border-b-2 border-black">
+                        <th className="p-1.5 border-r border-black font-bold w-[18%]">인법명</th>
+                        <th className="p-1.5 border-r border-black font-bold w-[12%]">타입</th>
+                        <th className="p-1.5 border-r border-black font-bold w-[15%]">지정특기</th>
+                        <th className="p-1.5 border-r border-black font-bold w-[10%]">간격</th>
+                        <th className="p-1.5 border-r border-black font-bold w-[10%]">코스트</th>
+                        <th className="p-1.5 font-bold">효과</th>
+                     </tr>
+                  </thead>
+                  <tbody>
+                     {Array.from({ length: 12 }).map((_, rowIndex) => {
+                        const ninpo = sheetData.ninpo?.[rowIndex] || { name: "", type: "", skill: "", range: "", cost: "", effect: "" };
+                        return (
+                           <tr key={rowIndex} className="border-b border-gray-400 border-dashed last:border-solid last:border-black">
+                              <td className="p-0 border-r border-black"><input type="text" value={ninpo.name} onChange={(e) => handleNinpoChange(rowIndex, "name", e.target.value)} className="w-full h-7 bg-transparent px-1 outline-none text-center font-semibold text-black" /></td>
+                              <td className="p-0 border-r border-black relative">
+                                 <select value={ninpo.type} onChange={(e) => handleNinpoChange(rowIndex, "type", e.target.value)} className="w-full h-7 bg-transparent outline-none text-center text-black cursor-pointer px-1">
+                                    <option value=""></option><option value="공격">공격</option><option value="서포트">서포트</option><option value="장비">장비</option>
+                                 </select>
+                              </td>
+                              <td className="p-0 border-r border-black"><input type="text" value={ninpo.skill} onChange={(e) => handleNinpoChange(rowIndex, "skill", e.target.value)} className="w-full h-7 bg-transparent px-1 outline-none text-center text-black" /></td>
+                              <td className="p-0 border-r border-black"><input type="text" value={ninpo.range} onChange={(e) => handleNinpoChange(rowIndex, "range", e.target.value)} className="w-full h-7 bg-transparent px-1 outline-none text-center text-black" /></td>
+                              <td className="p-0 border-r border-black"><input type="text" value={ninpo.cost} onChange={(e) => handleNinpoChange(rowIndex, "cost", e.target.value)} className="w-full h-7 bg-transparent px-1 outline-none text-center text-black" /></td>
+                              <td className="p-0"><input type="text" value={ninpo.effect} onChange={(e) => handleNinpoChange(rowIndex, "effect", e.target.value)} className="w-full h-7 bg-transparent px-2 outline-none text-left text-black" /></td>
+                           </tr>
+                        );
+                     })}
+                  </tbody>
+               </table>
+            </div>
           </div>
         )}
 
@@ -430,72 +465,75 @@ export function ShinobigamiSheet({ roomId, character, sheetData, onChange }: Shi
 
         {/* ================= 5. 오의 탭 ================= */}
         {activeSheetTab === "오의" && (
-          <div className="w-full overflow-x-auto bg-white text-black border-2 border-black flex flex-col rounded-sm min-w-[500px]">
-            <div className="bg-black text-white text-center py-2 font-bold text-2xl tracking-widest border-b-2 border-black">
-              오의
-            </div>
+          /* 🔥 4. 오의 탭 스크롤 분리 */
+          <div className="w-full overflow-x-auto scrollbar-hide [&::-webkit-scrollbar]:hidden">
+            <div className="flex flex-col min-w-[600px] min-w-full w-max bg-white text-black border-2 border-black rounded-sm">
+              <div className="bg-black text-white text-center py-2 font-bold text-2xl tracking-widest border-b-2 border-black">
+                오의
+              </div>
 
-            {Array.from({ length: 3 }).map((_, idx) => {
-              const ougi = sheetData.ougi?.[idx] || { name: "", skill: "", effect: "", advantage: "", disadvantage: "", description: "" };
-              return (
-                <div key={idx} className="flex flex-col border-b-2 border-black last:border-b-0 text-sm">
-                  <div className="flex border-b border-gray-400 border-dashed">
-                    <div className="w-28 bg-zinc-600 text-white font-bold text-center py-1 border-r border-gray-400">오의명</div>
-                    <input type="text" className="flex-1 px-2 outline-none bg-transparent" value={ougi.name} onChange={(e) => handleOugiChange(idx, 'name', e.target.value)} />
-                  </div>
-                  <div className="flex border-b border-gray-400 border-dashed">
-                    <div className="w-28 bg-zinc-600 text-white font-bold text-center py-1 border-r border-gray-400">지정특기</div>
-                    <input type="text" className="flex-1 px-2 outline-none bg-transparent" value={ougi.skill} onChange={(e) => handleOugiChange(idx, 'skill', e.target.value)} />
-                  </div>
-                  <div className="flex border-b border-gray-400">
-                    <div className="w-28 bg-zinc-600 text-white font-bold text-center py-1 border-r border-gray-400">효과</div>
-                    <input type="text" className="flex-1 px-2 outline-none bg-transparent" value={ougi.effect} onChange={(e) => handleOugiChange(idx, 'effect', e.target.value)} />
-                  </div>
-                  
-                  <div className="flex border-b border-gray-400">
-                    <div className="w-16 bg-zinc-600 text-white font-bold text-center py-1 border-r border-gray-400">강점</div>
-                    <input type="text" className="flex-1 px-2 outline-none bg-transparent border-r border-gray-400" value={ougi.advantage} onChange={(e) => handleOugiChange(idx, 'advantage', e.target.value)} />
-                    <div className="w-16 bg-zinc-600 text-white font-bold text-center py-1 border-r border-gray-400">약점</div>
-                    <input type="text" className="flex-1 px-2 outline-none bg-transparent" value={ougi.disadvantage} onChange={(e) => handleOugiChange(idx, 'disadvantage', e.target.value)} />
-                  </div>
-                  
-                  <div className="flex bg-gray-100 min-h-[90px]">
-                    <div className="w-28 bg-zinc-600 text-white font-bold text-center flex items-center justify-center border-r border-gray-400 p-2">설명</div>
-                    <textarea className="flex-1 p-2 outline-none resize-none bg-transparent" value={ougi.description} onChange={(e) => handleOugiChange(idx, 'description', e.target.value)} />
-                  </div>
-                </div>
-              )
-            })}
-
-            <div className="bg-zinc-600 text-white text-center py-2 font-bold text-lg tracking-widest border-y-2 border-black">
-              인법별 습득제한 모음
-            </div>
-            
-            <div className="flex bg-gray-300 font-bold border-b-2 border-black text-center text-sm">
-              <div className="w-8 border-r border-gray-400"></div>
-              <div className="flex-1 py-1 border-r border-gray-400">유파</div>
-              <div className="flex-1 py-1 border-r border-gray-400">제한</div>
-              <div className="w-8 border-r border-gray-400"></div>
-              <div className="flex-1 py-1 border-r border-gray-400">유파</div>
-              <div className="flex-1 py-1">제한</div>
-            </div>
-            
-            <div className="flex flex-col text-sm bg-white">
-              {Array.from({length: 6}).map((_, i) => {
-                const limit1 = sheetData.ninpoLimits?.[i] || { clan: "", limit: "" };
-                const limit2 = sheetData.ninpoLimits?.[i + 6] || { clan: "", limit: "" };
+              {Array.from({ length: 3 }).map((_, idx) => {
+                const ougi = sheetData.ougi?.[idx] || { name: "", skill: "", effect: "", advantage: "", disadvantage: "", description: "" };
                 return (
-                  <div key={i} className="flex border-b border-gray-400 border-dashed last:border-b-0 text-center">
-                    <div className="w-8 bg-gray-300 text-black font-bold py-1 border-r border-gray-500">{i + 1}</div>
-                    <input type="text" className="flex-1 px-1 outline-none border-r border-gray-400 bg-transparent text-center" value={limit1.clan} onChange={(e) => handleNinpoLimitChange(i, 'clan', e.target.value)} />
-                    <input type="text" className="flex-1 px-1 outline-none border-r border-gray-400 bg-transparent text-center" value={limit1.limit} onChange={(e) => handleNinpoLimitChange(i, 'limit', e.target.value)} />
+                  <div key={idx} className="flex flex-col border-b-2 border-black last:border-b-0 text-sm">
+                    <div className="flex border-b border-gray-400 border-dashed">
+                      <div className="w-28 bg-zinc-600 text-white font-bold text-center py-1 border-r border-gray-400">오의명</div>
+                      <input type="text" className="flex-1 px-2 outline-none bg-transparent" value={ougi.name} onChange={(e) => handleOugiChange(idx, 'name', e.target.value)} />
+                    </div>
+                    <div className="flex border-b border-gray-400 border-dashed">
+                      <div className="w-28 bg-zinc-600 text-white font-bold text-center py-1 border-r border-gray-400">지정특기</div>
+                      <input type="text" className="flex-1 px-2 outline-none bg-transparent" value={ougi.skill} onChange={(e) => handleOugiChange(idx, 'skill', e.target.value)} />
+                    </div>
+                    <div className="flex border-b border-gray-400">
+                      <div className="w-28 bg-zinc-600 text-white font-bold text-center py-1 border-r border-gray-400">효과</div>
+                      <input type="text" className="flex-1 px-2 outline-none bg-transparent" value={ougi.effect} onChange={(e) => handleOugiChange(idx, 'effect', e.target.value)} />
+                    </div>
                     
-                    <div className="w-8 bg-gray-300 text-black font-bold py-1 border-r border-gray-500">{i + 7}</div>
-                    <input type="text" className="flex-1 px-1 outline-none border-r border-gray-400 bg-transparent text-center" value={limit2.clan} onChange={(e) => handleNinpoLimitChange(i + 6, 'clan', e.target.value)} />
-                    <input type="text" className="flex-1 px-1 outline-none bg-transparent text-center" value={limit2.limit} onChange={(e) => handleNinpoLimitChange(i + 6, 'limit', e.target.value)} />
+                    <div className="flex border-b border-gray-400">
+                      <div className="w-16 bg-zinc-600 text-white font-bold text-center py-1 border-r border-gray-400">강점</div>
+                      <input type="text" className="flex-1 px-2 outline-none bg-transparent border-r border-gray-400" value={ougi.advantage} onChange={(e) => handleOugiChange(idx, 'advantage', e.target.value)} />
+                      <div className="w-16 bg-zinc-600 text-white font-bold text-center py-1 border-r border-gray-400">약점</div>
+                      <input type="text" className="flex-1 px-2 outline-none bg-transparent" value={ougi.disadvantage} onChange={(e) => handleOugiChange(idx, 'disadvantage', e.target.value)} />
+                    </div>
+                    
+                    <div className="flex bg-gray-100 min-h-[90px]">
+                      <div className="w-28 bg-zinc-600 text-white font-bold text-center flex items-center justify-center border-r border-gray-400 p-2">설명</div>
+                      <textarea className="flex-1 p-2 outline-none resize-none bg-transparent" value={ougi.description} onChange={(e) => handleOugiChange(idx, 'description', e.target.value)} />
+                    </div>
                   </div>
                 )
               })}
+
+              <div className="bg-zinc-600 text-white text-center py-2 font-bold text-lg tracking-widest border-y-2 border-black">
+                인법별 습득제한 모음
+              </div>
+              
+              <div className="flex bg-gray-300 font-bold border-b-2 border-black text-center text-sm">
+                <div className="w-8 border-r border-gray-400"></div>
+                <div className="flex-1 py-1 border-r border-gray-400">유파</div>
+                <div className="flex-1 py-1 border-r border-gray-400">제한</div>
+                <div className="w-8 border-r border-gray-400"></div>
+                <div className="flex-1 py-1 border-r border-gray-400">유파</div>
+                <div className="flex-1 py-1">제한</div>
+              </div>
+              
+              <div className="flex flex-col text-sm bg-white">
+                {Array.from({length: 6}).map((_, i) => {
+                  const limit1 = sheetData.ninpoLimits?.[i] || { clan: "", limit: "" };
+                  const limit2 = sheetData.ninpoLimits?.[i + 6] || { clan: "", limit: "" };
+                  return (
+                    <div key={i} className="flex border-b border-gray-400 border-dashed last:border-b-0 text-center">
+                      <div className="w-8 bg-gray-300 text-black font-bold py-1 border-r border-gray-500">{i + 1}</div>
+                      <input type="text" className="flex-1 px-1 outline-none border-r border-gray-400 bg-transparent text-center" value={limit1.clan} onChange={(e) => handleNinpoLimitChange(i, 'clan', e.target.value)} />
+                      <input type="text" className="flex-1 px-1 outline-none border-r border-gray-400 bg-transparent text-center" value={limit1.limit} onChange={(e) => handleNinpoLimitChange(i, 'limit', e.target.value)} />
+                      
+                      <div className="w-8 bg-gray-300 text-black font-bold py-1 border-r border-gray-500">{i + 7}</div>
+                      <input type="text" className="flex-1 px-1 outline-none border-r border-gray-400 bg-transparent text-center" value={limit2.clan} onChange={(e) => handleNinpoLimitChange(i + 6, 'clan', e.target.value)} />
+                      <input type="text" className="flex-1 px-1 outline-none bg-transparent text-center" value={limit2.limit} onChange={(e) => handleNinpoLimitChange(i + 6, 'limit', e.target.value)} />
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           </div>
         )}

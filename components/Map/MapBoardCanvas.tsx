@@ -180,16 +180,39 @@ export default function MapBoardCanvas({ roomId, currentUser, isGM }: MapBoardCa
     setLayers(newLayers);
     await updateDoc(doc(db, "rooms", roomId), { mapLayers: newLayers });
   };
+// 🔥 Space 키 눌림 상태를 추적하는 Ref 추가
+  const isSpacePressed = useRef(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // 입력창(input, textarea)에서 타자 치는 중일 때는 스페이스바 맵 이동 방지
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      if (e.code === "Space") {
+        e.preventDefault(); // 스페이스바로 화면 스크롤이 내려가는 현상 방지
+        isSpacePressed.current = true;
+        if (containerRef.current) containerRef.current.style.cursor = "grab";
+      }
+
       if ((e.key === "Delete" || e.key === "Backspace") && selectedId && tool === "cursor") {
         saveLayers(layers.map(l => ({ ...l, items: l.items.filter(i => i.id !== selectedId) })));
         setSelectedId(null);
       }
     };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === "Space") {
+        isSpacePressed.current = false;
+        if (containerRef.current) containerRef.current.style.cursor = "default";
+      }
+    };
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
   }, [selectedId, layers, tool]);
 
   const handleWheel = useCallback((e: Konva.KonvaEventObject<WheelEvent>) => {
@@ -214,8 +237,8 @@ export default function MapBoardCanvas({ roomId, currentUser, isGM }: MapBoardCa
   };
 
   const handlePointerDown = (e: any) => {
-    // 🔥 휠 클릭(마우스 3번 버튼)일 경우 오브젝트 무시하고 화면 드래그만 활성화
-    if (e.evt && e.evt.button === 1) {
+    // 🔥 휠 클릭이거나 Space 키를 누른 상태일 경우 오브젝트 무시하고 화면 드래그만 활성화
+    if ((e.evt && e.evt.button === 1) || isSpacePressed.current) {
       setIsPanning(true);
       if (containerRef.current) containerRef.current.style.cursor = "grabbing";
       return;
@@ -226,6 +249,7 @@ export default function MapBoardCanvas({ roomId, currentUser, isGM }: MapBoardCa
     setSelectedId(null); 
     const pos = getRelativePointerPosition();
     setIsDrawing(true);
+// ... (이하 기존 코드 동일)
 
     if (tool === "text") {
       const text = prompt("입력할 텍스트를 적어주세요:");
